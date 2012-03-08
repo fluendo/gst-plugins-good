@@ -3236,8 +3236,7 @@ gst_flv_demux_base_init (gpointer g_class)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
 
-  gst_element_class_add_static_pad_template (element_class,
-      &flv_sink_template);
+  gst_element_class_add_static_pad_template (element_class, &flv_sink_template);
   gst_element_class_add_static_pad_template (element_class,
       &audio_src_template);
   gst_element_class_add_static_pad_template (element_class,
@@ -3304,6 +3303,6 @@ plugin_init (GstPlugin * plugin)
   return TRUE;
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    "flv", "FLV muxing and demuxing plugin",
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR, GST_VERSION_MINOR,
+    flv, "FLV muxing and demuxing plugin",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

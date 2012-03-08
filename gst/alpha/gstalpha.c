@@ -2647,8 +2647,8 @@ plugin_init (GstPlugin * plugin)
   return gst_element_register (plugin, "alpha", GST_RANK_NONE, GST_TYPE_ALPHA);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "alpha",
+    alpha,
     "adds an alpha channel to video - constant or via chroma-keying",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

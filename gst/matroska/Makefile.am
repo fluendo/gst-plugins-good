@@ -40,8 +40,9 @@ libgstmatroska_la_LIBADD = \
 	$(BZ2_LIBS) \
 	$(LIBM)
 libgstmatroska_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstmatroska_la_LIBTOOLFLAGS = --tag=disable-static
-
+endif
 
 Android.mk: Makefile.am $(BUILT_SOURCES)
 	androgenizer \

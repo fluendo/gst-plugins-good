@@ -16,7 +16,9 @@ libgstossaudio_la_LIBADD = \
 	$(GST_BASE_LIBS) \
 	$(GST_LIBS)
 libgstossaudio_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) 
+if !GST_PLUGIN_BUILD_STATIC
 libgstossaudio_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = common.h            \
 		gstosssink.h	     \

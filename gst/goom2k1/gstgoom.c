@@ -134,8 +134,7 @@ gst_goom_base_init (GstGoomClass * klass)
       "GOOM: what a GOOM! 2k1 edition", "Visualization",
       "Takes frames of data and outputs video frames using the GOOM 2k1 filter",
       "Wim Taymans <wim@fluendo.com>");
-  gst_element_class_add_static_pad_template (element_class,
-      &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &sink_template);
   gst_element_class_add_static_pad_template (element_class, &src_template);
 }
 
@@ -654,8 +653,8 @@ plugin_init (GstPlugin * plugin)
   return gst_element_register (plugin, "goom2k1", GST_RANK_NONE, GST_TYPE_GOOM);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "goom2k1",
+    goom2k1,
     "GOOM 2k1 visualization filter",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

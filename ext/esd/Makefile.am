@@ -8,7 +8,9 @@ libgstesd_la_LIBADD = \
 	$(GST_LIBS) \
 	$(ESD_LIBS)
 libgstesd_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstesd_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = esdsink.h esdmon.h
 EXTRA_DIST =

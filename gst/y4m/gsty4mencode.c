@@ -370,8 +370,8 @@ plugin_init (GstPlugin * plugin)
       GST_TYPE_Y4M_ENCODE);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "y4menc",
+    y4menc,
     "Encodes a YUV frame into the yuv4mpeg format (mjpegtools)",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

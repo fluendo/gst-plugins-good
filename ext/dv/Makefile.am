@@ -6,7 +6,9 @@ libgstdv_la_LIBADD = \
 	$(GST_PLUGINS_BASE_LIBS) -lgstaudio-$(GST_MAJORMINOR) \
 	 $(GST_BASE_LIBS) $(GST_LIBS) $(LIBDV_LIBS)
 libgstdv_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstdv_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstdvdemux.h gstdvdec.h gstsmptetimecode.h
 

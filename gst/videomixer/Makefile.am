@@ -15,7 +15,9 @@ libgstvideomixer_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) \
 	-lgstvideo-@GST_MAJORMINOR@ \
 	$(GST_BASE_LIBS) $(GST_CONTROLLER_LIBS) $(GST_LIBS) $(ORC_LIBS)
 libgstvideomixer_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstvideomixer_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 # headers we need but don't want installed
 noinst_HEADERS = \

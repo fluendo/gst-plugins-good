@@ -17,7 +17,9 @@ libgstoss4audio_la_LIBADD = \
 	-lgstaudio-$(GST_MAJORMINOR) \
 	$(GST_LIBS)
 libgstoss4audio_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) 
+if !GST_PLUGIN_BUILD_STATIC
 libgstoss4audio_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = \
 	oss4-audio.h          \

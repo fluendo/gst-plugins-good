@@ -13,6 +13,8 @@ libgstspeex_la_LIBADD = \
 	$(GST_LIBS) \
 	$(SPEEX_LIBS)
 libgstspeex_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) $(LIBM)
+if !GST_PLUGIN_BUILD_STATIC
 libgstspeex_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstspeexenc.h gstspeexdec.h 

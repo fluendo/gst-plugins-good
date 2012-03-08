@@ -16,7 +16,9 @@ libgstpulse_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) -lgstaudio-$(GST_MAJORMINOR) \
 	-lgstinterfaces-$(GST_MAJORMINOR) -lgstpbutils-$(GST_MAJORMINOR) \
 	$(GST_BASE_LIBS) $(GST_LIBS) $(PULSE_LIBS)
 libgstpulse_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstpulse_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = \
 	pulsemixerctrl.h \

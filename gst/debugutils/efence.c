@@ -363,9 +363,9 @@ plugin_init (GstPlugin * plugin)
   return TRUE;
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "efence",
+    efence,
     "This element converts a stream of normal GStreamer buffers into a "
     "stream of buffers that are allocated in such a way that out-of-bounds "
     "access to data in the buffer is more likely to cause segmentation "

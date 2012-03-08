@@ -14,6 +14,8 @@ libgsttaglib_la_LIBADD = \
 	$(GST_LIBS) \
 	$(TAGLIB_LIBS)
 libgsttaglib_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgsttaglib_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gsttaglibmux.h gstid3v2mux.h gstapev2mux.h

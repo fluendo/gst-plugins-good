@@ -395,8 +395,8 @@ plugin_init (GstPlugin * plugin)
       && gst_apev2_mux_plugin_init (plugin));
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "taglib",
+    taglib,
     "Tag writing plug-in based on taglib",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);

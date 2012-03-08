@@ -12,7 +12,9 @@ libgstreplaygain_la_LIBADD  = \
 	$(GST_PLUGINS_BASE_LIBS) -lgstpbutils-0.10 \
 	$(GST_BASE_LIBS) $(GST_LIBS) $(LIBM)
 libgstreplaygain_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstreplaygain_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 # headers we need but don't want installed
 noinst_HEADERS =         \

@@ -82,8 +82,7 @@ gst_alpha_color_base_init (gpointer g_class)
       "ARGB from/to AYUV colorspace conversion preserving the alpha channel",
       "Wim Taymans <wim@fluendo.com>");
 
-  gst_element_class_add_static_pad_template (element_class,
-      &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &sink_template);
   gst_element_class_add_static_pad_template (element_class, &src_template);
 }
 
@@ -665,8 +664,8 @@ plugin_init (GstPlugin * plugin)
       GST_TYPE_ALPHA_COLOR);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "alphacolor",
+    alphacolor,
     "RGBA from/to AYUV colorspace conversion preserving the alpha channel",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

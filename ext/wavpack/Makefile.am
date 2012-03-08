@@ -13,7 +13,9 @@ libgstwavpack_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) \
 libgstwavpack_la_LIBADD =  $(GST_PLUGINS_BASE_LIBS) -lgstaudio-$(GST_MAJORMINOR) \
 				$(GST_BASE_LIBS) $(GST_LIBS) $(WAVPACK_LIBS)
 libgstwavpack_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstwavpack_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = \
 		gstwavpackparse.h \

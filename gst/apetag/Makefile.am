@@ -11,7 +11,9 @@ libgstapetag_la_LIBADD = \
 	$(GST_BASE_LIBS) \
 	$(GST_LIBS)
 libgstapetag_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstapetag_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstapedemux.h
 

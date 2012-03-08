@@ -90,7 +90,9 @@ libgstrtp_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) \
 		$(GST_BASE_LIBS) $(GST_LIBS) \
 		$(WINSOCK2_LIBS) $(LIBM)
 libgstrtp_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) 
+if !GST_PLUGIN_BUILD_STATIC
 libgstrtp_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS =			\
 		 fnv1hash.h 		\

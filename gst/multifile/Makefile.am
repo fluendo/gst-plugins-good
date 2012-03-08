@@ -10,7 +10,9 @@ libgstmultifile_la_SOURCES = \
 libgstmultifile_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_CFLAGS) $(GIO_CFLAGS)
 libgstmultifile_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) -lgstvideo-@GST_MAJORMINOR@ $(GST_BASE_LIBS) $(GST_LIBS) $(GIO_LIBS)
 libgstmultifile_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstmultifile_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstmultifilesrc.h gstmultifilesink.h gstsplitfilesrc.h patternspec.h
 

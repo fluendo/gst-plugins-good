@@ -14,7 +14,9 @@ libgstwavparse_la_LIBADD = \
 	$(GST_LIBS) \
 	$(LIBM)
 libgstwavparse_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstwavparse_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstwavparse.h
 

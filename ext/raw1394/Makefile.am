@@ -22,7 +22,9 @@ libgst1394_la_LIBADD = \
 	$(GST_LIBS) \
 	$(DV1394_LIBS)
 libgst1394_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgst1394_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstdv1394src.h gst1394probe.h $(hdvheaders) \
 	gst1394clock.h

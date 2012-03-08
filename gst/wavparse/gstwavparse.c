@@ -2666,8 +2666,8 @@ plugin_init (GstPlugin * plugin)
       GST_TYPE_WAVPARSE);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "wavparse",
+    wavparse,
     "Parse a .wav file into raw audio",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

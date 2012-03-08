@@ -40,7 +40,9 @@ libgstgoom_la_SOURCES =						\
 libgstgoom_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_CFLAGS) $(GOOM_FILTER_CFLAGS) $(ARCH_CFLAGS) $(ORC_CFLAGS)
 libgstgoom_la_LIBADD = $(GST_BASE_LIBS) $(GST_LIBS) $(LIBM) $(ORC_LIBS)
 libgstgoom_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstgoom_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 EXTRA_DIST = $(PPC_FILES) $(MMX_FILES)
 

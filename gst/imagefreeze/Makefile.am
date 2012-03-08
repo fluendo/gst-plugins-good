@@ -5,7 +5,9 @@ libgstimagefreeze_la_SOURCES = gstimagefreeze.c
 libgstimagefreeze_la_CFLAGS = $(GST_CFLAGS)
 libgstimagefreeze_la_LIBADD = $(GST_LIBS)
 libgstimagefreeze_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstimagefreeze_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstimagefreeze.h
 

@@ -15,7 +15,9 @@ libgstsunaudio_la_LIBADD = \
         $(GST_PLUGINS_BASE_LIBS) \
         $(GST_LIBS)
 libgstsunaudio_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstsunaudio_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstsunaudiosink.h \
                  gstsunaudiomixer.h \

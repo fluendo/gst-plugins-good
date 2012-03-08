@@ -50,8 +50,8 @@ plugin_init (GstPlugin * plugin)
 }
 
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "audioparsers",
+    audioparsers,
     "Parsers for various audio formats",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);

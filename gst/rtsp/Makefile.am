@@ -9,7 +9,9 @@ libgstrtsp_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) $(GST_BASE_LIBS) \
 		       -lgstrtp-@GST_MAJORMINOR@ -lgstrtsp-@GST_MAJORMINOR@ \
 		       -lgstsdp-@GST_MAJORMINOR@ $(GST_LIBS) $(WIN32_LIBS)
 libgstrtsp_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstrtsp_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstrtspsrc.h     \
 		 gstrtsp.h        \

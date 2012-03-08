@@ -7,7 +7,9 @@ noinst_HEADERS = gstmonoscope.h monoscope.h convolve.h
 libgstmonoscope_la_CFLAGS = $(GST_CFLAGS) $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS)
 libgstmonoscope_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS)
 libgstmonoscope_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstmonoscope_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 Android.mk: Makefile.am $(BUILT_SOURCES)
 	androgenizer \

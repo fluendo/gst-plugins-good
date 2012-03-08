@@ -22,7 +22,9 @@ libgstefence_la_SOURCES = efence.c
 libgstefence_la_CFLAGS = $(GST_CFLAGS)
 libgstefence_la_LIBADD = $(GST_LIBS)
 libgstefence_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstefence_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 libgstnavigationtest_la_SOURCES = gstnavigationtest.c
 libgstnavigationtest_la_CFLAGS = $(GST_CFLAGS) $(GST_BASE_CFLAGS) \
@@ -30,7 +32,9 @@ libgstnavigationtest_la_CFLAGS = $(GST_CFLAGS) $(GST_BASE_CFLAGS) \
 libgstnavigationtest_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS) \
 	$(GST_PLUGINS_BASE_LIBS) -lgstvideo-@GST_MAJORMINOR@ $(LIBM)
 libgstnavigationtest_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstnavigationtest_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 libgstdebug_la_SOURCES = \
 	gstdebug.c \
@@ -49,7 +53,9 @@ libgstdebug_la_SOURCES = \
 libgstdebug_la_CFLAGS = $(GST_CFLAGS) $(GST_BASE_CFLAGS)
 libgstdebug_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS)
 libgstdebug_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstdebug_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 Android.mk: Makefile.am $(BUILT_SOURCES)
 	androgenizer \

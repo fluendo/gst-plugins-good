@@ -15,7 +15,9 @@ libgstosxaudio_la_LIBADD = 			  \
     $(GST_BASE_LIBS)                  \
     $(GST_LIBS)
 libgstosxaudio_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -Wl,-framework -Wl,CoreAudio -Wl,-framework -Wl,AudioUnit -Wl,-framework -Wl,CoreServices
+if !GST_PLUGIN_BUILD_STATIC
 libgstosxaudio_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstosxaudiosink.h	  \
                  gstosxaudioelement.h \

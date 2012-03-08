@@ -8,7 +8,9 @@ libgstvideocrop_la_CFLAGS = $(GST_CFLAGS) $(GST_BASE_CFLAGS) \
 	$(GST_PLUGINS_BASE_CFLAGS)
 libgstvideocrop_la_LIBADD = $(GST_BASE_LIBS)
 libgstvideocrop_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstvideocrop_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstvideocrop.h gstaspectratiocrop.h
 

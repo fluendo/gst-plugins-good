@@ -6,7 +6,9 @@ libgstalpha_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) \
 libgstalpha_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) -lgstvideo-$(GST_MAJORMINOR) \
 	$(GST_CONTROLLER_LIBS) $(GST_BASE_LIBS) $(GST_LIBS) $(LIBM)
 libgstalpha_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstalpha_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 libgstalphacolor_la_SOURCES = gstalphacolor.c
 libgstalphacolor_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) \
@@ -14,7 +16,9 @@ libgstalphacolor_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) \
 libgstalphacolor_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) -lgstvideo-$(GST_MAJORMINOR) \
 	$(GST_BASE_LIBS) $(GST_LIBS)
 libgstalphacolor_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstalphacolor_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstalpha.h gstalphacolor.h
 

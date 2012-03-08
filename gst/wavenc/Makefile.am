@@ -9,7 +9,9 @@ libgstwavenc_la_LIBADD = 	\
 	-lgstriff-@GST_MAJORMINOR@ \
 	$(GST_LIBS)
 libgstwavenc_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstwavenc_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstwavenc.h
 

@@ -18,7 +18,9 @@ libgstvideofilter_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) \
 			$(GST_CONTROLLER_LIBS) \
 			$(GST_BASE_LIBS) $(GST_LIBS)
 libgstvideofilter_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) $(LIBM)
+if !GST_PLUGIN_BUILD_STATIC
 libgstvideofilter_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 gstvideoexample.c: $(srcdir)/make_filter $(srcdir)/gstvideotemplate.c
 	$(srcdir)/make_filter Videoexample $(srcdir)/gstvideotemplate.c

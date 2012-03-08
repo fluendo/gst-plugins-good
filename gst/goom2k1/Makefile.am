@@ -10,7 +10,9 @@ libgstgoom2k1_la_SOURCES = gstgoom.c goom_core.c $(GOOM_FILTER_FILES) graphic.c 
 libgstgoom2k1_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_CFLAGS) $(GOOM_FILTER_CFLAGS)
 libgstgoom2k1_la_LIBADD = $(GST_BASE_LIBS) $(GST_LIBS) $(LIBM)
 libgstgoom2k1_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstgoom2k1_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 EXTRA_DIST = filters.c
 

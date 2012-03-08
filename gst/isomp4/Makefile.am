@@ -15,7 +15,9 @@ libgstisomp4_la_SOURCES = isomp4-plugin.c gstrtpxqtdepay.c \
 	qtdemux.c qtdemux_types.c qtdemux_dump.c qtdemux_lang.c \
 	gstqtmux.c gstqtmoovrecover.c atoms.c atomsrecovery.c descriptors.c \
 	properties.c gstqtmuxmap.c
+if !GST_PLUGIN_BUILD_STATIC
 libgstisomp4_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = \
 	qtatomparser.h   \

@@ -345,8 +345,8 @@ plugin_init (GstPlugin * plugin)
       GST_TYPE_NAVIGATIONTEST);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "navigationtest",
+    navigationtest,
     "Template for a video filter",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

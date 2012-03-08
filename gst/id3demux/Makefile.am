@@ -5,7 +5,9 @@ libgstid3demux_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_C
 libgstid3demux_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) -lgsttag-@GST_MAJORMINOR@ \
 	-lgstpbutils-@GST_MAJORMINOR@ $(GST_BASE_LIBS)
 libgstid3demux_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstid3demux_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstid3demux.h
 

@@ -111,8 +111,7 @@ gst_flxdec_base_init (GstFlxDecClass * klass)
       "Codec/Decoder/Video",
       "FLC/FLI/FLX video decoder",
       "Sepp Wijnands <mrrazz@garbage-coderz.net>, Zeeshan Ali <zeenix@gmail.com>");
-  gst_element_class_add_static_pad_template (gstelement_class,
-      &sink_factory);
+  gst_element_class_add_static_pad_template (gstelement_class, &sink_factory);
   gst_element_class_add_static_pad_template (gstelement_class,
       &src_video_factory);
 }
@@ -683,8 +682,8 @@ plugin_init (GstPlugin * plugin)
       GST_RANK_PRIMARY, GST_TYPE_FLXDEC);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE2 (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "flxdec",
+    flxdec,
     "FLC/FLI/FLX video decoder",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

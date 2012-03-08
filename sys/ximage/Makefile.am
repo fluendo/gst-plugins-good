@@ -11,6 +11,8 @@ libgstximagesrc_la_LIBADD = \
 	$(GST_BASE_LIBS) \
 	$(X_LIBS) $(XSHM_LIBS) $(XFIXES_LIBS) $(XDAMAGE_LIBS) 
 libgstximagesrc_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstximagesrc_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstximagesrc.h ximageutil.h

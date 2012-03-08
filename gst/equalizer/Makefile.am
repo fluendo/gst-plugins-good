@@ -12,7 +12,9 @@ libgstequalizer_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) \
 	-lgstaudio-$(GST_MAJORMINOR) $(GST_BASE_LIBS) $(GST_CONTROLLER_LIBS) \
 	$(GST_LIBS) $(LIBM)
 libgstequalizer_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstequalizer_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstiirequalizer.h
 

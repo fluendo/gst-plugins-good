@@ -13,6 +13,8 @@ libgstdirectsoundsink_la_LIBADD = \
 	$(GST_LIBS) \
 	$(DIRECTSOUND_LIBS)
 libgstdirectsoundsink_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) $(DIRECTSOUND_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstdirectsoundsink_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstdirectsoundsink.h

@@ -12,7 +12,9 @@ libgstaudioparsers_la_LIBADD = \
 	-lgstaudio-$(GST_MAJORMINOR) \
 	$(GST_BASE_LIBS) $(GST_LIBS)
 libgstaudioparsers_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+if !GST_PLUGIN_BUILD_STATIC
 libgstaudioparsers_la_LIBTOOLFLAGS = --tag=disable-static
+endif
 
 noinst_HEADERS = gstaacparse.h gstamrparse.h gstac3parse.h \
 	gstdcaparse.h gstflacparse.h gstmpegaudioparse.h
