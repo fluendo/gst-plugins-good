@@ -16,6 +16,6 @@ if !GST_PLUGIN_BUILD_STATIC
 libgstosxvideosink_la_LIBTOOLFLAGS = --tag=disable-static
 endif
 
-AM_OBJCFLAGS=$(CFLAGS) $(GST_CFLAGS) $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) -Wno-aggregate-return
+AM_OBJCFLAGS=$(CFLAGS) $(GST_CFLAGS) $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) -Wno-aggregate-return -DRUN_NS_APP_THREAD
 
 noinst_HEADERS = osxvideosink.h cocoawindow.h
