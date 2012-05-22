@@ -227,7 +227,7 @@ ns_app_loop_thread (gpointer data)
 #endif
 
 static void
-gst_osx_video_sink_start_cocoa_event_poller (GstOSXVideoSink * osxvideosink )
+gst_osx_video_sink_run_cocoa_loop (GstOSXVideoSink * osxvideosink )
 {
   /* Cocoa applications require a main runloop running to dispatch UI
    * events and process deferred calls to the main thread through
@@ -262,7 +262,7 @@ gst_osx_video_sink_start_cocoa_event_poller (GstOSXVideoSink * osxvideosink )
 }
 
 static void
-gst_osx_video_sink_stop_cocoa_event_poller (GstOSXVideoSink * osxvideosink)
+gst_osx_video_sink_stop_cocoa_loop (GstOSXVideoSink * osxvideosink)
 {
 #ifndef RUN_NS_APP_THREAD
   if (osxvideosink->cocoa_timeout)
@@ -336,7 +336,7 @@ gst_osx_video_sink_osxwindow_create (GstOSXVideoSink * osxvideosink, gint width,
          */
         GST_INFO_OBJECT (osxvideosink, "no superview");
       } else {
-        gst_osx_video_sink_start_cocoa_event_poller (osxvideosink);
+        gst_osx_video_sink_run_cocoa_loop (osxvideosink);
         gst_osx_video_sink_call_from_main_thread(osxvideosink->osxvideosinkobject,
           @selector(createInternalWindow), nil, YES);
         GST_INFO_OBJECT (osxvideosink, "No superview, creating an internal window.");
@@ -361,7 +361,7 @@ gst_osx_video_sink_osxwindow_destroy (GstOSXVideoSink * osxvideosink)
 
   gst_osx_video_sink_call_from_main_thread(osxvideosink->osxvideosinkobject,
         @selector(destroy), (id) nil, YES);
-  gst_osx_video_sink_stop_cocoa_event_poller(osxvideosink);
+  gst_osx_video_sink_stop_cocoa_loop (osxvideosink);
   [pool release];
 }
 
