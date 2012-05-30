@@ -315,7 +315,7 @@ AM_CONDITIONAL(GST_PLUGIN_BUILD_STATIC, test "x$enable_static_plugins" = "xyes")
 
 dnl define an ERROR_CFLAGS Makefile variable
 dnl -Wundef: too many broken headers
-AG_GST_SET_ERROR_CFLAGS($FATAL_WARNINGS, [
+AG_GST_SET_ERROR_CFLAGS($GST_GIT, [
       -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls
       -Wwrite-strings -Wold-style-definition -Waggregate-return
       -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar
@@ -328,7 +328,7 @@ AG_GST_SET_ERROR_CXXFLAGS($GST_GIT, [
         -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar ])
 
 dnl define an ERROR_OBJCFLAGS Makefile variable
-AG_GST_SET_ERROR_OBJCFLAGS($FATAL_WARNINGS, [
+AG_GST_SET_ERROR_OBJCFLAGS($GST_GIT, [
       -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls
       -Wwrite-strings -Wold-style-definition
       -Winit-self -Wmissing-include-dirs -Wno-multichar
