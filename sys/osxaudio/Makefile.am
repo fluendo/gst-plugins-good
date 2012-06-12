@@ -22,7 +22,8 @@ endif
 noinst_HEADERS = gstosxaudiosink.h	  \
                  gstosxaudioelement.h \
                  gstosxringbuffer.h	  \
-                 gstosxaudiosrc.h
+                 gstosxaudiosrc.h     \
+                 gstosxcoreaudio.h
 
 
 
