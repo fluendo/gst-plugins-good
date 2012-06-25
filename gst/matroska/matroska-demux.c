@@ -1371,6 +1371,7 @@ gst_matroska_demux_query (GstMatroskaDemux * demux, GstPad * pad,
 
       gst_query_parse_position (query, &format, NULL);
 
+      res = TRUE;
       if (format == GST_FORMAT_TIME) {
         GST_OBJECT_LOCK (demux);
         if (context)
@@ -1391,9 +1392,9 @@ gst_matroska_demux_query (GstMatroskaDemux * demux, GstPad * pad,
       } else {
         GST_DEBUG_OBJECT (demux,
             "only position query in TIME and DEFAULT format is supported");
+        res = FALSE;
       }
 
-      res = TRUE;
       break;
     }
     case GST_QUERY_DURATION:
@@ -1402,6 +1403,7 @@ gst_matroska_demux_query (GstMatroskaDemux * demux, GstPad * pad,
 
       gst_query_parse_duration (query, &format, NULL);
 
+      res = TRUE;
       if (format == GST_FORMAT_TIME) {
         GST_OBJECT_LOCK (demux);
         gst_query_set_duration (query, GST_FORMAT_TIME,
@@ -1416,9 +1418,8 @@ gst_matroska_demux_query (GstMatroskaDemux * demux, GstPad * pad,
       } else {
         GST_DEBUG_OBJECT (demux,
             "only duration query in TIME and DEFAULT format is supported");
+        res = FALSE;
       }
-
-      res = TRUE;
       break;
     }
 
