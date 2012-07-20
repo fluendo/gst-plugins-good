@@ -1974,14 +1974,6 @@ gst_matroska_demux_handle_seek_event (GstMatroskaDemux * demux,
 
   GST_DEBUG_OBJECT (demux, "New segment %" GST_SEGMENT_FORMAT, &seeksegment);
 
-  if (!update) {
-    /* only have to update some segment,
-     * but also still have to honour flush and so on */
-    GST_DEBUG_OBJECT (demux, "... no update");
-    /* bad goto, bad ... */
-    goto next;
-  }
-
   /* check sanity before we start flushing and all that */
   GST_OBJECT_LOCK (demux);
   track = gst_matroska_read_common_get_seek_track (&demux->common, track);
@@ -1993,10 +1985,27 @@ gst_matroska_demux_handle_seek_event (GstMatroskaDemux * demux,
       GST_DEBUG_OBJECT (demux, "No matching seek entry in index");
       GST_OBJECT_UNLOCK (demux);
       return FALSE;
+    } else if (rate < 0.0) {
+      /* FIXME: We should build an index during playback or when scanning
+       * that can be used here. The reverse playback code requires seek_index
+       * and seek_entry to be set!
+       */
+      GST_DEBUG_OBJECT (demux,
+          "No matching seek entry in index, needed for reverse playback");
+      GST_OBJECT_UNLOCK (demux);
+      return FALSE;
     }
   }
   GST_DEBUG_OBJECT (demux, "Seek position looks sane");
   GST_OBJECT_UNLOCK (demux);
+
+  if (!update) {
+    /* only have to update some segment,
+     * but also still have to honour flush and so on */
+    GST_DEBUG_OBJECT (demux, "... no update");
+    /* bad goto, bad ... */
+    goto next;
+  }
 
   if (demux->streaming) {
     GST_OBJECT_LOCK (demux);
