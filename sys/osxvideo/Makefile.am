@@ -15,7 +15,7 @@ libgstosxvideosink_la_LIBADD =  \
 
 libgstosxvideosink_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -Wl,-framework -Wl,Cocoa -Wl,-framework -Wl,QuickTime -Wl,-framework -Wl,OpenGL
 if !GST_PLUGIN_BUILD_STATIC
-libgstosxvideosink_la_LIBTOOLFLAGS = --tag=disable-static
+libgstosxvideosink_la_LIBTOOLFLAGS = --tag=disable-static --tag=CC
 endif
 
 noinst_HEADERS = osxvideosink.h cocoawindow.h
