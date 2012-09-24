@@ -51,6 +51,7 @@ GST_DEBUG_CATEGORY (gst_debug_osx_video_sink);
 extern  void _CFRunLoopSetCurrent(CFRunLoopRef rl);
 extern pthread_t _CFMainPThread;
 #endif
+#define MAIN_RUN_LOOP_CHECK_WAIT_NS 500000
 
 static GstStaticPadTemplate gst_osx_video_sink_sink_template_factory =
 GST_STATIC_PAD_TEMPLATE ("sink",
@@ -140,9 +141,9 @@ gst_osx_videosink_check_main_run_loop (GstOSXVideoSink *sink)
     [object performSelectorOnMainThread:
           @selector(checkMainRunLoop)
           withObject:nil waitUntilDone:NO];
-    /* Wait 100 ms */
+    /* Wait 500 ms */
     g_get_current_time (&abstime);
-    g_time_val_add (&abstime, 100 * 1000);
+    g_time_val_add (&abstime, MAIN_RUN_LOOP_CHECK_WAIT_NS);
     is_running = g_cond_timed_wait(sink->mrl_check_cond,
         sink->mrl_check_lock, &abstime);
     g_mutex_unlock(sink->mrl_check_lock);
