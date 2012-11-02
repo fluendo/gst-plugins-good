@@ -19,15 +19,9 @@ CLEANFILES = $(BUILT_SOURCES)
 endif
 
 noinst_HEADERS = \
-	gsttimeoverlay.h \
-	gsttextoverlay.h \
-	gstcairorender.h \
 	$(gstcairo_gobject_dep_headers)
 libgstcairo_la_SOURCES = \
 	gstcairo.c \
-	gsttimeoverlay.c \
-	gsttextoverlay.c \
-	gstcairorender.c \
 	$(gstcairo_gobject_dep_sources)
 nodist_libgstcairo_la_SOURCES = \
     $(built_sources)
