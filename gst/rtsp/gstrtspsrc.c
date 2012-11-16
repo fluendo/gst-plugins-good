@@ -5016,6 +5016,14 @@ gst_rtspsrc_create_transports_string (GstRTSPSrc * src,
     if (add_udp_str)
       g_string_append (result, "/UDP");
     g_string_append (result, ";multicast");
+    if (src->next_port_num != 0) {
+      if (src->client_port_range.max > 0 &&
+          src->next_port_num >= src->client_port_range.max)
+        goto no_ports;
+
+      g_string_append_printf (result, ";client_port=%d-%d",
+          src->next_port_num, src->next_port_num + 1);
+    }
   } else if (protocols & GST_RTSP_LOWER_TRANS_TCP) {
     GST_DEBUG_OBJECT (src, "adding TCP");
 
@@ -5033,6 +5041,11 @@ gst_rtspsrc_create_transports_string (GstRTSPSrc * src,
 failed:
   {
     return res;
+  }
+no_ports:
+  {
+    GST_ERROR ("no more ports available");
+    return GST_RTSP_ERROR;
   }
 }
 
@@ -5376,6 +5389,12 @@ gst_rtspsrc_setup_streams (GstRTSPSrc * src, gboolean async)
           /* only allow multicast for other streams */
           GST_DEBUG_OBJECT (src, "stream %p as UDP multicast", stream);
           protocols = GST_RTSP_LOWER_TRANS_UDP_MCAST;
+          /* if the server selected our ports, increment our counters so that
+           * we select a new port later */
+          if (src->next_port_num == transport.port.min &&
+              src->next_port_num + 1 == transport.port.max) {
+            src->next_port_num += 2;
+          }
           break;
         case GST_RTSP_LOWER_TRANS_UDP:
           /* only allow unicast for other streams */
