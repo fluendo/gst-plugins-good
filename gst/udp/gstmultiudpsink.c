@@ -903,7 +903,7 @@ ttl_failed:
   {
     gchar *errormessage = socket_last_error_message ();
     int errorcode = socket_last_error_code ();
-#ifdef G_OS_WIN32
+#if defined(G_OS_WIN32) || defined(__APPLE__)
     GST_WARNING_OBJECT (sink,
         "Could not set TTL socket option (%d): %s", errorcode, errormessage);
     g_free (errormessage);
