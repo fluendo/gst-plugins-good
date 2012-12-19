@@ -96,6 +96,13 @@ static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
 
 enum
 {
+  GST_SOUP_HTTP_SRC_SEEKABLE_FALSE,
+  GST_SOUP_HTTP_SRC_SEEKABLE_TRUE,
+  GST_SOUP_HTTP_SRC_SEEKABLE_UNKNOWN,
+};
+
+enum
+{
   PROP_0,
   PROP_LOCATION,
   PROP_IS_LIVE,
@@ -318,7 +325,7 @@ gst_soup_http_src_reset (GstSoupHTTPSrc * src)
   src->interrupted = FALSE;
   src->retry = FALSE;
   src->have_size = FALSE;
-  src->seekable = FALSE;
+  src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_UNKNOWN;
   src->read_position = 0;
   src->request_position = 0;
   src->content_size = 0;
@@ -755,7 +762,7 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
     if (!src->have_size || (src->content_size != newsize)) {
       src->content_size = newsize;
       src->have_size = TRUE;
-      src->seekable = TRUE;
+      src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
       GST_DEBUG_OBJECT (src, "size = %" G_GUINT64_FORMAT, src->content_size);
 
       basesrc = GST_BASE_SRC_CAST (src);
@@ -868,7 +875,7 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
   /* Check if Range header was respected. */
   if (src->ret == GST_FLOW_CUSTOM_ERROR &&
       src->read_position && msg->status_code != SOUP_STATUS_PARTIAL_CONTENT) {
-    src->seekable = FALSE;
+    src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_FALSE;
     GST_ELEMENT_ERROR (src, RESOURCE, SEEK,
         (_("Server does not support seeking.")),
         ("Server does not accept Range HTTP header, URL: %s", src->location));
@@ -1378,7 +1385,7 @@ gst_soup_http_src_do_seek (GstBaseSrc * bsrc, GstSegment * segment)
     return TRUE;
   }
 
-  if (!src->seekable) {
+  if (src->seekable == GST_SOUP_HTTP_SRC_SEEKABLE_FALSE) {
     GST_WARNING_OBJECT (src, "Not seekable");
     return FALSE;
   }

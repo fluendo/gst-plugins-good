@@ -72,8 +72,8 @@ struct _GstSoupHTTPSrc {
                                   header. */
   guint64 content_size;        /* Value of Content-Length header. */
   guint64 read_position;       /* Current position. */
-  gboolean seekable;           /* FALSE if the server does not support
-                                  Range. */
+  guint32 seekable;            /* UNKNOWN until we receive the first headers then FALSE if
+                                  the server does not support Range. */
   guint64 request_position;    /* Seek to this position. */
 
   /* Shoutcast/icecast metadata extraction handling. */
