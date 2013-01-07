@@ -251,6 +251,8 @@ struct _GstRtpSessionPrivate
 
   /* NTP base time */
   guint64 ntpnsbase;
+  GstClockTime send_latency;
+
   gboolean use_pipeline_clock;
 };
 
@@ -1803,6 +1805,34 @@ gst_rtp_session_event_send_rtp_sink (GstPad * pad, GstEvent * event)
   return ret;
 }
 
+static gboolean
+gst_rtp_session_event_send_rtp_src (GstPad * pad, GstEvent * event)
+{
+  GstRtpSession *rtpsession;
+  gboolean ret = FALSE;
+
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
+
+  GST_DEBUG_OBJECT (rtpsession, "received EVENT %s",
+      GST_EVENT_TYPE_NAME (event));
+
+  switch (GST_EVENT_TYPE (event)) {
+    case GST_EVENT_LATENCY:
+      /* save the latency, we need this to know when an RTP packet will be
+       * rendered by the sink */
+      gst_event_parse_latency (event, &rtpsession->priv->send_latency);
+
+      ret = gst_pad_event_default (pad, event);
+      break;
+    default:
+      ret = gst_pad_event_default (pad, event);
+      break;
+  }
+  gst_object_unref (rtpsession);
+
+  return ret;
+}
+
 static GstCaps *
 gst_rtp_session_getcaps_send_rtp (GstPad * pad)
 {
@@ -1891,6 +1921,7 @@ gst_rtp_session_chain_send_rtp_common (GstPad * pad, gpointer data,
     running_time =
         gst_segment_to_running_time (&rtpsession->send_rtp_seg, GST_FORMAT_TIME,
         timestamp);
+    running_time += priv->send_latency;
   } else {
     /* no timestamp. */
     running_time = -1;
@@ -2072,6 +2103,8 @@ create_send_rtp_sink (GstRtpSession * rtpsession)
       "send_rtp_src");
   gst_pad_set_iterate_internal_links_function (rtpsession->send_rtp_src,
       gst_rtp_session_iterate_internal_links);
+  gst_pad_set_event_function (rtpsession->send_rtp_src,
+      gst_rtp_session_event_send_rtp_src);
   gst_pad_set_active (rtpsession->send_rtp_src, TRUE);
   gst_element_add_pad (GST_ELEMENT_CAST (rtpsession), rtpsession->send_rtp_src);
 
