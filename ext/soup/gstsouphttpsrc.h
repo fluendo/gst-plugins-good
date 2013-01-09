@@ -75,6 +75,7 @@ struct _GstSoupHTTPSrc {
   guint32 seekable;            /* UNKNOWN until we receive the first headers then FALSE if
                                   the server does not support Range. */
   guint64 request_position;    /* Seek to this position. */
+  guint64 stop_position;       /* Stop at this position. */
 
   /* Shoutcast/icecast metadata extraction handling. */
   gboolean iradio_mode;
