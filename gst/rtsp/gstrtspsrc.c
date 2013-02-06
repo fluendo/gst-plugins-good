@@ -1712,7 +1712,7 @@ gst_rtspsrc_flush (GstRTSPSrc * src, gboolean flush, gboolean playing)
     }
   }
   gst_rtspsrc_push_event (src, event, FALSE);
-  gst_rtspsrc_loop_send_cmd (src, cmd, flush);
+  gst_rtspsrc_loop_send_cmd (src, cmd, FALSE);
 
   /* set up manager before data-flow resumes */
   /* to manage jitterbuffer buffer mode */
@@ -4109,8 +4109,6 @@ gst_rtspsrc_loop_send_cmd (GstRTSPSrc * src, gint cmd, gboolean flush)
 {
   gint old;
 
-  /* FIXME flush param mute; remove at discretion */
-
   /* start new request */
   gst_rtspsrc_loop_start_cmd (src, cmd);
 
@@ -4127,7 +4125,7 @@ gst_rtspsrc_loop_send_cmd (GstRTSPSrc * src, gint cmd, gboolean flush)
   }
   src->loop_cmd = cmd;
   /* interrupt if allowed */
-  if (src->waiting) {
+  if (src->waiting || flush) {
     GST_DEBUG_OBJECT (src, "start connection flush");
     gst_rtspsrc_connection_flush (src, TRUE);
   }
@@ -6438,7 +6436,7 @@ gst_rtspsrc_handle_message (GstBin * bin, GstMessage * message)
         /* we only act on the first udp timeout message, others are irrelevant
          * and can be ignored. */
         if (!ignore_timeout)
-          gst_rtspsrc_loop_send_cmd (rtspsrc, CMD_RECONNECT, TRUE);
+          gst_rtspsrc_loop_send_cmd (rtspsrc, CMD_RECONNECT, FALSE);
         /* eat and free */
         gst_message_unref (message);
         return;
@@ -6642,7 +6640,7 @@ gst_rtspsrc_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
     case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
       /* unblock the tcp tasks and make the loop waiting */
-      gst_rtspsrc_loop_send_cmd (rtspsrc, CMD_WAIT, TRUE);
+      gst_rtspsrc_loop_send_cmd (rtspsrc, CMD_WAIT, FALSE);
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
       break;
