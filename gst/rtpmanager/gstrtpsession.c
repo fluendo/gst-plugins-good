@@ -228,9 +228,13 @@ enum
 #define GST_RTP_SESSION_LOCK(sess)   g_mutex_lock ((sess)->priv->lock)
 #define GST_RTP_SESSION_UNLOCK(sess) g_mutex_unlock ((sess)->priv->lock)
 
+#define GST_RTP_SESSION_WAIT(sess)   g_cond_wait ((sess)->priv->cond, (sess)->priv->lock)
+#define GST_RTP_SESSION_SIGNAL(sess) g_cond_signal ((sess)->priv->cond)
+
 struct _GstRtpSessionPrivate
 {
   GMutex *lock;
+  GCond *cond;
   GstClock *sysclock;
 
   RTPSession *session;
@@ -240,6 +244,7 @@ struct _GstRtpSessionPrivate
   gboolean stop_thread;
   GThread *thread;
   gboolean thread_stopped;
+  gboolean wait_send;
 
   /* caps mapping */
   GHashTable *ptmap;
@@ -630,6 +635,7 @@ gst_rtp_session_init (GstRtpSession * rtpsession, GstRtpSessionClass * klass)
 {
   rtpsession->priv = GST_RTP_SESSION_GET_PRIVATE (rtpsession);
   rtpsession->priv->lock = g_mutex_new ();
+  rtpsession->priv->cond = g_cond_new ();
   rtpsession->priv->sysclock = gst_system_clock_obtain ();
   rtpsession->priv->session = rtp_session_new ();
   rtpsession->priv->use_pipeline_clock = DEFAULT_USE_PIPELINE_CLOCK;
@@ -673,6 +679,7 @@ gst_rtp_session_finalize (GObject * object)
 
   g_hash_table_destroy (rtpsession->priv->ptmap);
   g_mutex_free (rtpsession->priv->lock);
+  g_cond_free (rtpsession->priv->cond);
   g_object_unref (rtpsession->priv->sysclock);
   g_object_unref (rtpsession->priv->session);
 
@@ -848,6 +855,12 @@ rtcp_thread (GstRtpSession * rtpsession)
 
   GST_RTP_SESSION_LOCK (rtpsession);
 
+  while (rtpsession->priv->wait_send) {
+    GST_LOG_OBJECT (rtpsession, "waiting for RTP thread");
+    GST_RTP_SESSION_WAIT (rtpsession);
+    GST_LOG_OBJECT (rtpsession, "signaled...");
+  }
+
   sysclock = rtpsession->priv->sysclock;
   current_time = gst_clock_get_time (sysclock);
 
@@ -952,6 +965,8 @@ stop_rtcp_thread (GstRtpSession * rtpsession)
 
   GST_RTP_SESSION_LOCK (rtpsession);
   rtpsession->priv->stop_thread = TRUE;
+  rtpsession->priv->wait_send = FALSE;
+  GST_RTP_SESSION_SIGNAL (rtpsession);
   if (rtpsession->priv->id)
     gst_clock_id_unschedule (rtpsession->priv->id);
   GST_RTP_SESSION_UNLOCK (rtpsession);
@@ -988,6 +1003,9 @@ gst_rtp_session_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_NULL_TO_READY:
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
+      GST_RTP_SESSION_LOCK (rtpsession);
+      rtpsession->priv->wait_send = TRUE;
+      GST_RTP_SESSION_UNLOCK (rtpsession);
       break;
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
       break;
@@ -1085,6 +1103,11 @@ gst_rtp_session_send_rtp (RTPSession * sess, RTPSource * src,
   GST_RTP_SESSION_LOCK (rtpsession);
   if ((rtp_src = rtpsession->send_rtp_src))
     gst_object_ref (rtp_src);
+  if (rtpsession->priv->wait_send) {
+    GST_LOG_OBJECT (rtpsession, "signal RTCP thread");
+    rtpsession->priv->wait_send = FALSE;
+    GST_RTP_SESSION_SIGNAL (rtpsession);
+  }
   GST_RTP_SESSION_UNLOCK (rtpsession);
 
   if (rtp_src) {
