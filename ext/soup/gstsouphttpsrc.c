@@ -500,6 +500,11 @@ gst_soup_http_src_set_property (GObject * object, guint prop_id,
         gst_structure_free (src->extra_headers);
 
       src->extra_headers = s ? gst_structure_copy (s) : NULL;
+      
+      /* Any change in the HTTP headers could imply a different reply from the
+       * server so we can't claim we know the size anymore */
+      src->have_size = FALSE;
+
       break;
     }
     default:
@@ -1483,6 +1488,9 @@ gst_soup_http_src_set_location (GstSoupHTTPSrc * src, const gchar * uri)
     src->location = NULL;
   }
   src->location = g_strdup (uri);
+
+  /* Any change in location means we don't know the size anymore. */
+  src->have_size = FALSE;
 
   return TRUE;
 }
