@@ -203,6 +203,7 @@ gst_udp_join_group (int sockfd, struct sockaddr_storage *addr, gchar * iface)
   switch (addr->ss_family) {
     case AF_INET:
     {
+      struct in_addr iface_address;
 #ifdef HAVE_IP_MREQN
       struct ip_mreqn mreq4;
 #else
@@ -213,12 +214,24 @@ gst_udp_join_group (int sockfd, struct sockaddr_storage *addr, gchar * iface)
       mreq4.imr_multiaddr.s_addr =
           ((struct sockaddr_in *) addr)->sin_addr.s_addr;
 #ifdef HAVE_IP_MREQN
-      if (iface)
-        mreq4.imr_ifindex = if_nametoindex (iface);
-      else
-        mreq4.imr_ifindex = 0;  /* Pick any.  */
+      if (iface) {
+        if (inet_aton (iface, &iface_address) == 0)
+          mreq4.imr_address = iface_address;
+#ifdef HAVE_IF_NAMETOINDEX
+        else
+          mreq4.imr_ifindex = if_nametoindex (iface);
 #else
-      mreq4.imr_interface.s_addr = INADDR_ANY;
+        else
+          mreq4.imr_ifindex = 0;        /* Pick any.  */
+#endif
+      } else {
+        mreq4.imr_ifindex = 0;  /* Pick any.  */
+      }
+#else
+      if (iface && inet_aton (iface, &iface_address) == 0)
+        mreq4.imr_interface = iface_address;
+      else
+        mreq4.imr_interface.s_addr = INADDR_ANY;
 #endif
 
       if ((ret =
@@ -237,7 +250,7 @@ gst_udp_join_group (int sockfd, struct sockaddr_storage *addr, gchar * iface)
           &(((struct sockaddr_in6 *) addr)->sin6_addr),
           sizeof (struct in6_addr));
       mreq6.ipv6mr_interface = 0;
-#if !defined(G_OS_WIN32)
+#if HAVE_IF_NAMETOINDEX
       if (iface)
         mreq6.ipv6mr_interface = if_nametoindex (iface);
 #endif

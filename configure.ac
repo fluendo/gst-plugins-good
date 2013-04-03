@@ -198,8 +198,8 @@ dnl Check for mmap (needed by electricfence plugin)
 AC_FUNC_MMAP
 AM_CONDITIONAL(GST_HAVE_MMAP, test "x$ac_cv_func_mmap_fixed_mapped" = "xyes")
 
-dnl Check for mmap (needed by electricfence plugin)
 
+AC_CHECK_FUNC(if_nametoindex)
 AC_CHECK_TYPE([struct ip_mreqn], [
               AC_DEFINE(HAVE_IP_MREQN,, [Define if we have struct ip_mreqn])],,
               [#include <netinet/in.h>])
