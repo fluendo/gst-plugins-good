@@ -203,7 +203,12 @@ gst_udp_join_group (int sockfd, struct sockaddr_storage *addr, gchar * iface)
   switch (addr->ss_family) {
     case AF_INET:
     {
+#ifdef G_OS_WIN32
+      struct sockaddr_storage iface_address;
+      gint len;
+#else
       struct in_addr iface_address;
+#endif
 #ifdef HAVE_IP_MREQN
       struct ip_mreqn mreq4;
 #else
@@ -215,8 +220,14 @@ gst_udp_join_group (int sockfd, struct sockaddr_storage *addr, gchar * iface)
           ((struct sockaddr_in *) addr)->sin_addr.s_addr;
 #ifdef HAVE_IP_MREQN
       if (iface) {
+#ifdef G_OS_WIN32
+        len = sizeof (iface_address);
+        if (WSAStringToAddress ((LPTSTR) iface, AF_INET, NULL, (LPSOCKADDR) &iface_address, &len) == 0)
+          mreq4.imr_address = ((struct sockaddr_in *) &iface_address)->sin_addr;
+#else
         if (inet_aton (iface, &iface_address) == 0)
           mreq4.imr_address = iface_address;
+#endif
 #ifdef HAVE_IF_NAMETOINDEX
         else
           mreq4.imr_ifindex = if_nametoindex (iface);
@@ -228,8 +239,14 @@ gst_udp_join_group (int sockfd, struct sockaddr_storage *addr, gchar * iface)
         mreq4.imr_ifindex = 0;  /* Pick any.  */
       }
 #else
+#ifdef G_OS_WIN32
+      len = sizeof (iface_address);
+      if (iface && WSAStringToAddress ((LPTSTR) iface, AF_INET, NULL, (LPSOCKADDR) &iface_address, &len) == 0)
+        mreq4.imr_interface = ((struct sockaddr_in *) &iface_address)->sin_addr;
+#else
       if (iface && inet_aton (iface, &iface_address) == 0)
         mreq4.imr_interface = iface_address;
+#endif
       else
         mreq4.imr_interface.s_addr = INADDR_ANY;
 #endif
