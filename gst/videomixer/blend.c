@@ -168,7 +168,7 @@ fill_color_##name (guint8 * dest, gint width, gint height, gint Y, gint U, gint 
   } \
   val = GUINT32_FROM_BE ((0xff << A) | (c1 << C1) | (c2 << C2) | (c3 << C3)); \
   \
-  orc_splat_u32 ((guint32 *) dest, val, height * width); \
+  videomixer_orc_splat_u32 ((guint32 *) dest, val, height * width); \
 }
 
 A32_COLOR (argb, TRUE, 24, 16, 8, 0);
@@ -524,7 +524,7 @@ _memset_##name (guint8* dest, gint red, gint green, gint blue, gint width) { \
   guint32 val; \
   \
   val = GUINT32_FROM_BE ((red << r) | (green << g) | (blue << b)); \
-  orc_splat_u32 ((guint32 *) dest, val, width); \
+  videomixer_orc_splat_u32 ((guint32 *) dest, val, width); \
 }
 
 #define _orc_memcpy_u32(dest,src,len) orc_memcpy_u32((guint32 *) dest, (const guint32 *) src, len/4)
@@ -651,7 +651,7 @@ fill_color_##name (guint8 * dest, gint width, gint height, \
   val = GUINT32_FROM_BE ((colY << Y1) | (colY << Y2) | (colU << U) | (colV << V)); \
   \
   for (i = 0; i < height; i++) { \
-    orc_splat_u32 ((guint32 *) dest, val, width); \
+    videomixer_orc_splat_u32 ((guint32 *) dest, val, width); \
     dest += dest_stride; \
   } \
 }
