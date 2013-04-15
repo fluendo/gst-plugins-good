@@ -232,6 +232,7 @@ gst_osx_video_sink_osxwindow_create (GstOSXVideoSink * osxvideosink, gint width,
   osxwindow->width = width;
   osxwindow->height = height;
   osxwindow->closed = FALSE;
+  osxwindow->internal = FALSE;
 
   /* Allocate our GstGLView for the window, and then tell the application
    * about it (hopefully it's listening...) */
@@ -700,11 +701,11 @@ gst_osx_video_sink_set_window_handle (GstXOverlay * overlay, guintptr handle_id)
       gst_osx_video_sink_call_from_main_thread(osxvideosink,
         osxvideosink->osxwindow->gstview,
         @selector(addToSuperview:), osxvideosink->superview, YES);
+    if (window_id) {
+      osxvideosink->osxwindow->internal = FALSE;
+    }
   }
 
-  if (window_id) {
-    osxvideosink->osxwindow->internal = FALSE;
-  }
 }
 
 static void
