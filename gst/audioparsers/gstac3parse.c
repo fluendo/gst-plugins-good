@@ -35,7 +35,7 @@
  */
 
 /* TODO:
- *  - add support for audio/x-private1-ac3 as well
+ *  - audio/ac3 to audio/x-private1-ac3 is not implemented (done in the muxer)
  *  - should accept framed and unframed input (needs decodebin fixes first)
  */
 
@@ -153,7 +153,8 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-ac3; " "audio/x-eac3; " "audio/ac3"));
+    GST_STATIC_CAPS ("audio/x-ac3; " "audio/x-eac3; " "audio/ac3; "
+        "audio/x-private1-ac3"));
 
 static void gst_ac3_parse_finalize (GObject * object);
 
@@ -166,6 +167,10 @@ static GstFlowReturn gst_ac3_parse_parse_frame (GstBaseParse * parse,
 static gboolean gst_ac3_parse_src_event (GstBaseParse * parse,
     GstEvent * event);
 static GstCaps *gst_ac3_parse_get_sink_caps (GstBaseParse * parse);
+static gboolean gst_ac3_parse_set_sink_caps (GstBaseParse * parse,
+    GstCaps * caps);
+static GstFlowReturn gst_ac3_parse_chain_priv (GstPad * pad,
+    GstBuffer * buffer);
 
 GST_BOILERPLATE (GstAc3Parse, gst_ac3_parse, GstBaseParse, GST_TYPE_BASE_PARSE);
 
@@ -174,8 +179,7 @@ gst_ac3_parse_base_init (gpointer klass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  gst_element_class_add_static_pad_template (element_class,
-      &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &sink_template);
   gst_element_class_add_static_pad_template (element_class, &src_template);
 
   gst_element_class_set_details_simple (element_class,
@@ -201,6 +205,7 @@ gst_ac3_parse_class_init (GstAc3ParseClass * klass)
   parse_class->parse_frame = GST_DEBUG_FUNCPTR (gst_ac3_parse_parse_frame);
   parse_class->src_event = GST_DEBUG_FUNCPTR (gst_ac3_parse_src_event);
   parse_class->get_sink_caps = GST_DEBUG_FUNCPTR (gst_ac3_parse_get_sink_caps);
+  parse_class->set_sink_caps = GST_DEBUG_FUNCPTR (gst_ac3_parse_set_sink_caps);
 }
 
 static void
@@ -218,6 +223,8 @@ gst_ac3_parse_init (GstAc3Parse * ac3parse, GstAc3ParseClass * klass)
 {
   gst_base_parse_set_min_frame_size (GST_BASE_PARSE (ac3parse), 6);
   gst_ac3_parse_reset (ac3parse);
+  ac3parse->baseparse_chainfunc =
+      GST_BASE_PARSE_SINK_PAD (GST_BASE_PARSE (ac3parse))->chainfunc;
 }
 
 static void
@@ -635,6 +642,42 @@ broken_header:
   }
 }
 
+
+/*
+ * MPEG-PS private1 streams add a 2 bytes "Audio Substream Headers" for each
+ * buffer (not each frame) with the offset of the next frame's start.
+ *
+ * Buffer 1:
+ * -------------------------------------------
+ * |firstAccUnit|AC3SyncWord|xxxxxxxxxxxxxxxxx
+ * -------------------------------------------
+ * Buffer 2:
+ * -------------------------------------------
+ * |firstAccUnit|xxxxxx|AC3SyncWord|xxxxxxxxxx
+ * -------------------------------------------
+ *
+ * These 2 bytes can be dropped safely as they do not include any timing
+ * information, only the offset to the start of the next frame.
+ *
+ * From http://stnsoft.com/DVD/ass-hdr.html:
+ * "FirstAccUnit offset to frame which corresponds to PTS value offset 0 is the
+ * last byte of FirstAccUnit, ie add the offset of byte 2 to get the AU's offset
+ * The value 0000 indicates there is no first access unit"
+ * */
+
+static GstFlowReturn
+gst_ac3_parse_chain_priv (GstPad * pad, GstBuffer * buffer)
+{
+  GstBuffer *newbuf;
+  GstFlowReturn ret;
+  GstAc3Parse *ac3parse = GST_AC3_PARSE (GST_OBJECT_PARENT (pad));
+
+  newbuf = gst_buffer_create_sub (buffer, 2, GST_BUFFER_SIZE (buffer) - 2);
+  ret = ac3parse->baseparse_chainfunc (pad, newbuf);
+  gst_buffer_unref (buffer);
+  return ret;
+}
+
 static gboolean
 gst_ac3_parse_src_event (GstBaseParse * parse, GstEvent * event)
 {
@@ -698,4 +741,19 @@ gst_ac3_parse_get_sink_caps (GstBaseParse * parse)
   }
 
   return res;
+}
+
+static gboolean
+gst_ac3_parse_set_sink_caps (GstBaseParse * parse, GstCaps * caps)
+{
+  GstStructure *s;
+  GstAc3Parse *ac3parse = GST_AC3_PARSE (parse);
+
+  s = gst_caps_get_structure (caps, 0);
+  if (gst_structure_has_name (s, "audio/x-private1-ac3")) {
+    gst_pad_set_chain_function (parse->sinkpad, gst_ac3_parse_chain_priv);
+  } else {
+    gst_pad_set_chain_function (parse->sinkpad, ac3parse->baseparse_chainfunc);
+  }
+  return TRUE;
 }
