@@ -890,8 +890,13 @@ gst_osx_video_sink_get_type (void)
   {
     viewdata = (guint8 *) [osxvideosink->osxwindow->gstview getTextureBuffer];
 
-    memcpy (viewdata, GST_BUFFER_DATA(buf), GST_BUFFER_SIZE(buf));
-    [osxvideosink->osxwindow->gstview displayTexture];
+    if (G_UNLIKELY (viewdata == NULL)) {
+      GST_ELEMENT_ERROR (osxvideosink, RESOURCE, WRITE,
+        ("Could not get a texture buffer"), (NULL));
+    } else {
+      memcpy (viewdata, GST_BUFFER_DATA(buf), GST_BUFFER_SIZE(buf));
+      [osxvideosink->osxwindow->gstview displayTexture];
+    }
   }
 
   [object release];
