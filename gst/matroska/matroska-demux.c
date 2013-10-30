@@ -1568,7 +1568,6 @@ gst_matroska_demux_move_to_entry (GstMatroskaDemux * demux,
 
     /* update the time */
     gst_matroska_read_common_reset_streams (&demux->common, entry->time, TRUE);
-    demux->common.segment.last_stop = entry->time;
     demux->seek_block = entry->block;
     demux->seek_first = TRUE;
     demux->last_stop_end = GST_CLOCK_TIME_NONE;
