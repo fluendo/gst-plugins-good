@@ -248,52 +248,38 @@ gst_osx_video_sink_osxwindow_create (GstOSXVideoSink * osxvideosink, gint width,
   rect.size.height = (float) osxwindow->height;
   osxwindow->gstview =[[GstGLView alloc] initWithFrame:rect];
 
-  s = gst_structure_new ("have-ns-view",
-     "nsview", G_TYPE_POINTER, osxwindow->gstview,
-     nil);
-
-  msg = gst_message_new_element (GST_OBJECT (osxvideosink), s);
-  gst_element_post_message (GST_ELEMENT (osxvideosink), msg);
-
-  GST_INFO_OBJECT (osxvideosink, "'have-ns-view' message sent");
-
   osxvideosink->ns_app_thread = [NSThread mainThread];
   gst_osx_videosink_check_main_run_loop (osxvideosink);
   gst_osx_video_sink_run_cocoa_loop (osxvideosink);
   [osxwindow->gstview setMainThread:osxvideosink->ns_app_thread];
 
-  /* check if have-ns-view was handled and osxwindow->gstview was added to a
-   * superview
-   */
-  if ([osxwindow->gstview haveSuperview] == NO) {
-    /* have-ns-view wasn't handled, post prepare-xwindow-id */
-    if (osxvideosink->superview == NULL) {
-      GST_INFO_OBJECT (osxvideosink, "emitting prepare-xwindow-id");
-      gst_x_overlay_prepare_xwindow_id (GST_X_OVERLAY (osxvideosink));
-    }
+  /* have-ns-view wasn't handled, post prepare-xwindow-id */
+  if (osxvideosink->superview == NULL) {
+    GST_INFO_OBJECT (osxvideosink, "emitting prepare-xwindow-id");
+    gst_x_overlay_prepare_xwindow_id (GST_X_OVERLAY (osxvideosink));
+  }
 
-    if (osxvideosink->superview != NULL) {
-      /* prepare-xwindow-id was handled, we have the superview in
-       * osxvideosink->superview. We now add osxwindow->gstview to the superview
-       * from the main thread
+  if (osxvideosink->superview != NULL) {
+    /* prepare-xwindow-id was handled, we have the superview in
+     * osxvideosink->superview. We now add osxwindow->gstview to the superview
+     * from the main thread
+     */
+    GST_INFO_OBJECT (osxvideosink, "we have a superview, adding our view to it");
+    gst_osx_video_sink_call_from_main_thread(osxvideosink, osxwindow->gstview,
+        @selector(addToSuperview:), osxvideosink->superview, NO);
+
+  } else {
+    if (osxvideosink->embed) {
+      /* the view wasn't added to a superview. It's possible that the
+       * application handled have-ns-view, stored our view internally and is
+       * going to add it to a superview later (webkit does that now).
        */
-      GST_INFO_OBJECT (osxvideosink, "we have a superview, adding our view to it");
-      gst_osx_video_sink_call_from_main_thread(osxvideosink, osxwindow->gstview,
-          @selector(addToSuperview:), osxvideosink->superview, NO);
-
+      GST_INFO_OBJECT (osxvideosink, "no superview");
     } else {
-      if (osxvideosink->embed) {
-        /* the view wasn't added to a superview. It's possible that the
-         * application handled have-ns-view, stored our view internally and is
-         * going to add it to a superview later (webkit does that now).
-         */
-        GST_INFO_OBJECT (osxvideosink, "no superview");
-      } else {
-        gst_osx_video_sink_call_from_main_thread(osxvideosink,
-          osxvideosink->osxvideosinkobject,
-          @selector(createInternalWindow), nil, YES);
-        GST_INFO_OBJECT (osxvideosink, "No superview, creating an internal window.");
-      }
+      gst_osx_video_sink_call_from_main_thread(osxvideosink,
+        osxvideosink->osxvideosinkobject,
+        @selector(createInternalWindow), nil, YES);
+      GST_INFO_OBJECT (osxvideosink, "No superview, creating an internal window.");
     }
   }
   [osxwindow->gstview setNavigation: GST_NAVIGATION(osxvideosink)];
