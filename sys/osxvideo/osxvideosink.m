@@ -124,6 +124,12 @@ gst_osx_videosink_check_main_run_loop (GstOSXVideoSink *sink)
   if (sink->mrl_check_done) {
     return;
   }
+  /* ADDED FLUENDO: we asume the main run loop is always running.
+   * Otherwhise this check can sometimes fails with the main thread
+   * is blocked */
+  is_running = TRUE;
+  goto exit;
+
   /* the easy way */
   is_running = [[NSRunLoop mainRunLoop] currentMode] != nil;
   if (is_running) {
@@ -691,7 +697,7 @@ gst_osx_video_sink_set_window_handle (GstXOverlay * overlay, guintptr handle_id)
     if (osxvideosink->osxwindow) {
       gst_osx_video_sink_call_from_main_thread(osxvideosink,
           osxvideosink->osxwindow->gstview,
-          @selector(removeFromSuperview:), (id)nil, YES);
+          @selector(removeFromSuperview:), (id)nil, NO);
     }
     [osxvideosink->superview release];
 
@@ -702,7 +708,7 @@ gst_osx_video_sink_set_window_handle (GstXOverlay * overlay, guintptr handle_id)
   if (osxvideosink->osxwindow) {
       gst_osx_video_sink_call_from_main_thread(osxvideosink,
         osxvideosink->osxwindow->gstview,
-        @selector(addToSuperview:), osxvideosink->superview, YES);
+        @selector(addToSuperview:), osxvideosink->superview, NO);
     if (window_id) {
       osxvideosink->osxwindow->internal = FALSE;
     }
