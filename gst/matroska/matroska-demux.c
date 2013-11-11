@@ -2274,6 +2274,9 @@ gst_matroska_demux_handle_src_event (GstPad * pad, GstEvent * event)
 
     case GST_EVENT_QOS:
     {
+      /* FLUENDO: Do not try to handle QOS events as the decoders are already
+       * doing that and we would just step on their toes... */
+      /*
       GstMatroskaTrackContext *context = gst_pad_get_element_private (pad);
       if (context->type == GST_MATROSKA_TRACK_TYPE_VIDEO) {
         GstMatroskaTrackVideoContext *videocontext =
@@ -2287,7 +2290,7 @@ gst_matroska_demux_handle_src_event (GstPad * pad, GstEvent * event)
         GST_OBJECT_LOCK (demux);
         videocontext->earliest_time = timestamp + diff;
         GST_OBJECT_UNLOCK (demux);
-      }
+      }*/
       res = TRUE;
       gst_event_unref (event);
       break;
