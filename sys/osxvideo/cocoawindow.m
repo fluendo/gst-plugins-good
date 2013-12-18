@@ -486,8 +486,12 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
   if (data) {
     data = g_realloc (data, width * height * sizeof(short)); // short or 3byte?
   } else {
-    data = g_malloc0(width * height * sizeof(short));
+    data = g_malloc(width * height * sizeof(short));
   }
+  /* set data to black color pattern (YUV) to prevent the first frame to be green */
+  int patt_black = 0x00800080;
+  memset_pattern4(data, &patt_black, width * height * sizeof(short));
+
   /* Create textures */
   glGenTextures (1, (GLuint *)&pi_texture);
 
