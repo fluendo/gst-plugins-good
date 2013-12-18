@@ -334,7 +334,7 @@ gst_osx_video_sink_osxwindow_resize (GstOSXVideoSink * osxvideosink,
   /* Directly resize the underlying view */
   GST_DEBUG_OBJECT (osxvideosink, "Calling setVideoSize on %p", osxwindow->gstview);
   gst_osx_video_sink_call_from_main_thread(osxvideosink, object,
-      @selector(resize), (id)nil, YES);
+      @selector(resize), (id)nil, NO);
 
   [pool release];
 }
@@ -871,18 +871,20 @@ gst_osx_video_sink_get_type (void)
 - (void) resize
 {
   GstOSXWindow *osxwindow = osxvideosink->osxwindow;
-
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-  GST_INFO_OBJECT (osxvideosink, "resizing");
-  NSSize size = {osxwindow->width, osxwindow->height};
-  if (osxwindow->internal) {
-    [osxwindow->win setContentSize:size];
+  if (osxwindow != NULL)
+  {
+    GST_INFO_OBJECT (osxvideosink, "resizing");
+    NSSize size = {osxwindow->width, osxwindow->height};
+    if (osxwindow->internal) {
+      [osxwindow->win setContentSize:size];
+    }
+    if (osxwindow->gstview) {
+        [osxwindow->gstview setVideoSize :(int)osxwindow->width :(int)osxwindow->height];
+    }
+    GST_INFO_OBJECT (osxvideosink, "done");
   }
-  if (osxwindow->gstview) {
-      [osxwindow->gstview setVideoSize :(int)osxwindow->width :(int)osxwindow->height];
-  }
-  GST_INFO_OBJECT (osxvideosink, "done");
 
   [pool release];
 }
