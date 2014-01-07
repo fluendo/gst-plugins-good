@@ -51,6 +51,14 @@ GST_DEBUG_CATEGORY_EXTERN (qtdemux_debug);
 typedef struct _GstQTDemux GstQTDemux;
 typedef struct _GstQTDemuxClass GstQTDemuxClass;
 typedef struct _QtDemuxStream QtDemuxStream;
+typedef struct _QtDemuxMatrix QtDemuxMatrix;
+
+struct _QtDemuxMatrix {
+  gint32 a, b, u;
+  gint32 c, d, v;
+  gint32 x, y, w;
+};
+
 
 struct _GstQTDemux {
   GstElement element;
@@ -71,6 +79,7 @@ struct _GstQTDemux {
 
   guint32 timescale;
   guint64 duration;
+  QtDemuxMatrix matrix_structure;
 
   gboolean fragmented;
   /* offset of the mfra atom */

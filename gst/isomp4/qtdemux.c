@@ -72,6 +72,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef HAVE_ZLIB
 # include <zlib.h>
@@ -205,6 +206,9 @@ struct _QtDemuxStream
   guint32 subtype;
   GstCaps *caps;
   guint32 fourcc;
+
+  /* the transformation used for this track */
+  QtDemuxMatrix matrix_structure;
 
   /* if the stream has a redirect URI in its headers, we store it here */
   gchar *redirect_uri;
@@ -430,6 +434,71 @@ static GstCaps *qtdemux_sub_caps (GstQTDemux * qtdemux,
 static gboolean qtdemux_parse_samples (GstQTDemux * qtdemux,
     QtDemuxStream * stream, guint32 n);
 static GstFlowReturn qtdemux_expose_streams (GstQTDemux * qtdemux);
+
+static void
+qtdemux_parse_matrix (QtDemuxMatrix * matrix, const guint8 * data)
+{
+  matrix->a = QT_UINT32 (data);
+  matrix->b = QT_UINT32 (data + 4);
+  matrix->u = QT_UINT32 (data + 8);
+  matrix->c = QT_UINT32 (data + 12);
+  matrix->d = QT_UINT32 (data + 16);
+  matrix->v = QT_UINT32 (data + 20);
+  matrix->x = QT_UINT32 (data + 24);
+  matrix->y = QT_UINT32 (data + 28);
+  matrix->w = QT_UINT32 (data + 32);
+}
+
+static gint
+qtdemux_matrix_rotation (QtDemuxMatrix * matrix)
+{
+  gdouble v;
+
+  /* check for a rotation */
+  if (matrix->a != matrix->d)
+    return 0;
+  if (matrix->b != -matrix->c)
+    return 0;
+
+  /* convert to double the 16.16 fixed float */
+  v = matrix->d / 65536.0f;
+  return (gint) (180 * acos (v) / M_PI);
+}
+
+static const gchar *
+qtdemux_angle_to_orientation (gint angle)
+{
+  switch (angle) {
+    case 0:
+      return "rotate-0";
+    case 90:
+      return "rotate-90";
+    case 180:
+      return "rotate-180";
+    case 270:
+      return "rotate-270";
+    case -90:
+      return "flip-rotate-90";
+    case -180:
+      return "flip-rotate-180";
+    case -270:
+      return "flip-rotate-270";
+    default:
+      return NULL;
+  }
+}
+
+static const gchar *
+qtdemux_stream_get_orientation (GstQTDemux * qtdemux, QtDemuxStream * stream)
+{
+  gint rotation;
+  /* calculate the rotation */
+  rotation = qtdemux_matrix_rotation (&qtdemux->matrix_structure);
+  /* add the original degrees */
+  rotation += qtdemux_matrix_rotation (&stream->matrix_structure);
+
+  return qtdemux_angle_to_orientation (rotation);
+}
 
 static void
 gst_qtdemux_base_init (gpointer klass)
@@ -6399,6 +6468,22 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
       !gst_byte_reader_get_uint32_be (&tkhd, &stream->track_id))
     goto corrupt_file;
 
+  /* get the matrix structure at offset 24 from track id */
+  if (tkhd_version == 0) {
+    const guint8 *matrix;
+    const gchar *orientation;
+
+    matrix = gst_byte_reader_peek_data_unchecked (&tkhd);
+    qtdemux_parse_matrix (&stream->matrix_structure, matrix + 24);
+
+    if (!list)
+      list = gst_tag_list_new ();
+
+    orientation = qtdemux_stream_get_orientation (qtdemux, stream);
+    gst_tag_list_add (list, GST_TAG_MERGE_REPLACE, GST_TAG_IMAGE_ORIENTATION,
+        orientation, NULL, NULL);
+  }
+
   GST_LOG_OBJECT (qtdemux, "track[tkhd] version/flags/id: 0x%02x/%06x/%u",
       tkhd_version, tkhd_flags, stream->track_id);
 
@@ -6546,7 +6631,8 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
     stream->caps =
         qtdemux_video_caps (qtdemux, stream, fourcc, stsd_data, &codec);
     if (codec) {
-      list = gst_tag_list_new ();
+      if (!list)
+        list = gst_tag_list_new ();
       gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
           GST_TAG_VIDEO_CODEC, codec, NULL);
       g_free (codec);
@@ -8894,6 +8980,8 @@ qtdemux_parse_tree (GstQTDemux * qtdemux)
     creation_time = QT_UINT32 ((guint8 *) mvhd->data + 12);
     qtdemux->timescale = QT_UINT32 ((guint8 *) mvhd->data + 20);
     qtdemux->duration = QT_UINT32 ((guint8 *) mvhd->data + 24);
+    qtdemux_parse_matrix (&qtdemux->matrix_structure,
+        (guint8 *) mvhd->data + 44);
   } else {
     GST_WARNING_OBJECT (qtdemux, "Unhandled mvhd version %d", version);
     return FALSE;

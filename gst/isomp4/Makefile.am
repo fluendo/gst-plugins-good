@@ -9,7 +9,7 @@ libgstisomp4_la_LIBADD = \
     -lgstrtp-@GST_MAJORMINOR@ \
     -lgsttag-@GST_MAJORMINOR@ \
     -lgstpbutils-@GST_MAJORMINOR@ \
-    $(GST_BASE_LIBS) $(GST_LIBS) $(ZLIB_LIBS)
+    $(GST_BASE_LIBS) $(GST_LIBS) $(ZLIB_LIBS) $(LIBM)
 libgstisomp4_la_LDFLAGS = ${GST_PLUGIN_LDFLAGS}
 libgstisomp4_la_SOURCES = isomp4-plugin.c gstrtpxqtdepay.c \
 	qtdemux.c qtdemux_types.c qtdemux_dump.c qtdemux_lang.c \
