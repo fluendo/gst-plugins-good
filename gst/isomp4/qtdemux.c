@@ -452,7 +452,9 @@ qtdemux_parse_matrix (QtDemuxMatrix * matrix, const guint8 * data)
 static gint
 qtdemux_matrix_rotation (QtDemuxMatrix * matrix)
 {
-  gdouble v;
+  gdouble s;
+  gdouble c;
+  gint ret;
 
   /* check for a rotation */
   if (matrix->a != matrix->d)
@@ -461,8 +463,14 @@ qtdemux_matrix_rotation (QtDemuxMatrix * matrix)
     return 0;
 
   /* convert to double the 16.16 fixed float */
-  v = matrix->d / 65536.0f;
-  return (gint) (180 * acos (v) / M_PI);
+  c = matrix->a / 65536.0f;
+  s = matrix->c / 65536.0f;
+
+  ret = (180 * atan2 (s, c) / M_PI);
+  if (ret < 0)
+    ret = 360 + ret;
+
+  return ret;
 }
 
 static const gchar *
@@ -477,12 +485,6 @@ qtdemux_angle_to_orientation (gint angle)
       return "rotate-180";
     case 270:
       return "rotate-270";
-    case -90:
-      return "flip-rotate-90";
-    case -180:
-      return "flip-rotate-180";
-    case -270:
-      return "flip-rotate-270";
     default:
       return NULL;
   }
