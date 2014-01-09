@@ -466,7 +466,7 @@ qtdemux_matrix_rotation (QtDemuxMatrix * matrix)
 
   /* convert to double the 16.16 fixed float */
   c = matrix->a / 65536.0f;
-  s = matrix->c / 65536.0f;
+  s = matrix->b / 65536.0f;
 
   ret = (180 * atan2 (s, c) / M_PI);
   if (ret < 0)
