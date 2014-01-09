@@ -247,6 +247,8 @@ struct _QtDemuxStream
   gint fps_d;
   guint16 bits_per_sample;
   guint16 color_table_id;
+  /* transformation */
+  gint rotation;
 
   /* audio info */
   gdouble rate;
@@ -490,16 +492,15 @@ qtdemux_angle_to_orientation (gint angle)
   }
 }
 
-static const gchar *
-qtdemux_stream_get_orientation (GstQTDemux * qtdemux, QtDemuxStream * stream)
+static gint
+qtdemux_stream_get_rotation (GstQTDemux * qtdemux, QtDemuxStream * stream)
 {
   gint rotation;
   /* calculate the rotation */
   rotation = qtdemux_matrix_rotation (&qtdemux->matrix_structure);
   /* add the original degrees */
   rotation += qtdemux_matrix_rotation (&stream->matrix_structure);
-
-  return qtdemux_angle_to_orientation (rotation);
+  return rotation;
 }
 
 static void
@@ -5144,7 +5145,8 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
       gst_caps_set_simple (stream->caps,
           "width", G_TYPE_INT, stream->width,
           "height", G_TYPE_INT, stream->height,
-          "framerate", GST_TYPE_FRACTION, stream->fps_n, stream->fps_d, NULL);
+          "framerate", GST_TYPE_FRACTION, stream->fps_n, stream->fps_d,
+          "rotation", G_TYPE_INT, stream->rotation, NULL);
 
       /* calculate pixel-aspect-ratio using display width and height */
       GST_DEBUG_OBJECT (qtdemux,
@@ -6481,7 +6483,8 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
     if (!list)
       list = gst_tag_list_new ();
 
-    orientation = qtdemux_stream_get_orientation (qtdemux, stream);
+    stream->rotation = qtdemux_stream_get_rotation (qtdemux, stream);
+    orientation = qtdemux_angle_to_orientation (stream->rotation);
     gst_tag_list_add (list, GST_TAG_MERGE_REPLACE, GST_TAG_IMAGE_ORIENTATION,
         orientation, NULL, NULL);
   }
