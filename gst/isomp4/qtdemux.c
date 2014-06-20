@@ -5331,6 +5331,12 @@ qtdemux_parse_node (GstQTDemux * qtdemux, GNode * node, const guint8 * buffer,
         qtdemux_parse_container (qtdemux, node, buffer + 0x56, end);
         break;
       }
+      case FOURCC_avc3:
+      {
+        GST_MEMDUMP_OBJECT (qtdemux, "avc3", buffer, end - buffer);
+        qtdemux_parse_container (qtdemux, node, buffer + 0x56, end);
+        break;
+      }
       case FOURCC_mjp2:
       {
         qtdemux_parse_container (qtdemux, node, buffer + 86, end);
@@ -7037,6 +7043,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     } else {
       switch (stream->fourcc) {
         case FOURCC_avc1:
+        case FOURCC_avc3:
         {
           gint len = QT_UINT32 (stsd_data) - 0x56;
           const guint8 *avc_data = stsd_data + 0x56;
@@ -10198,6 +10205,12 @@ qtdemux_video_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
       _codec ("H.264 / AVC");
       caps = gst_caps_new_simple ("video/x-h264",
           "stream-format", G_TYPE_STRING, "avc",
+          "alignment", G_TYPE_STRING, "au", NULL);
+      break;
+    case GST_MAKE_FOURCC ('a', 'v', 'c', '3'):
+      _codec ("H.264 / AVC");
+      caps = gst_caps_new_simple ("video/x-h264",
+          "stream-format", G_TYPE_STRING, "avc3",
           "alignment", G_TYPE_STRING, "au", NULL);
       break;
     case GST_MAKE_FOURCC ('r', 'l', 'e', ' '):
