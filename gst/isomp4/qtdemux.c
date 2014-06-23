@@ -2716,18 +2716,14 @@ qtdemux_parse_tfhd (GstQTDemux * qtdemux, GstByteReader * tfhd,
         default_sample_description_idx);
   }
 
-  if (flags & TF_SAMPLE_DESCRIPTION_INDEX)
-    if (!gst_byte_reader_get_uint32_be (tfhd, default_sample_description_idx))
-      goto invalid_track;
-
-  *stream = qtdemux_find_stream (qtdemux, track_id,
-      *default_sample_description_idx);
-  if (G_UNLIKELY (!*stream))
-    goto unknown_stream;
-
   if (flags & TF_BASE_DATA_OFFSET)
     if (!gst_byte_reader_get_uint64_be (tfhd, (guint64 *) base_offset))
       goto invalid_track;
+
+  if (flags & TF_SAMPLE_DESCRIPTION_INDEX) {
+    if (!gst_byte_reader_get_uint32_be (tfhd, default_sample_description_idx))
+      goto invalid_track;
+  }
 
   if (flags & TF_DEFAULT_SAMPLE_DURATION)
     if (!gst_byte_reader_get_uint32_be (tfhd, default_sample_duration))
@@ -2746,6 +2742,12 @@ qtdemux_parse_tfhd (GstQTDemux * qtdemux, GstByteReader * tfhd,
     if (flags & TF_DEFAULT_BASE_IS_MOOF)
       *base_offset = -1;
   }
+
+  *stream = qtdemux_find_stream (qtdemux, track_id,
+      *default_sample_description_idx);
+  if (G_UNLIKELY (!*stream))
+    goto unknown_stream;
+
 
   return TRUE;
 
@@ -10565,6 +10567,12 @@ qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
     case FOURCC_owma:
       _codec ("WMA");
       caps = gst_caps_new_simple ("audio/x-wma", NULL);
+      break;
+    case FOURCC_dtsl:
+    case FOURCC_dtsh:
+    case FOURCC_dtse:
+      _codec ("DTS");
+      caps = gst_caps_new_simple ("audio/x-dts", NULL);
       break;
     case GST_MAKE_FOURCC ('q', 't', 'v', 'r'):
       /* ? */
