@@ -186,6 +186,9 @@ static const QtNodeType qt_node_types[] = {
   {FOURCC_senc, "senc", 0},
   {FOURCC_pssh, "pssh", 0},
   {FOURCC_uuid, "uuid", 0},
+  {FOURCC_dtsl, "dtsl", 0},
+  {FOURCC_dtsh, "dtsh", 0},
+  {FOURCC_dtse, "dtse", 0},
   {0, "unknown", 0,},
 };
 

@@ -254,6 +254,12 @@ G_BEGIN_DECLS
 #define FOURCC_piff     GST_MAKE_FOURCC('p','i','f','f')
 #define FOURCC_pssh     GST_MAKE_FOURCC('p','s','s','h')
 
+
+/* DTS variants */
+#define FOURCC_dtsl     GST_MAKE_FOURCC('d','t','s','l')
+#define FOURCC_dtsh     GST_MAKE_FOURCC('d','t','s','h')
+#define FOURCC_dtse     GST_MAKE_FOURCC('d','t','s','e')
+
 G_END_DECLS
 
 #endif /* __GST_QTDEMUX_FOURCC_H__ */
