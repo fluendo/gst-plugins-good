@@ -4054,9 +4054,11 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
     g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_DECRYPT], 0,
         stream->track_id, buf, stream->senc_sample_index++, &dec_buf);
 
+    gst_buffer_unref (buf);
     if (dec_buf) {
-      gst_buffer_unref (buf);
       buf = dec_buf;
+    } else {
+      goto exit;
     }
   }
 
