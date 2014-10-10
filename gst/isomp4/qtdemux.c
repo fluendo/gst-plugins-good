@@ -6476,6 +6476,7 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
   if (tkhd_version == 0) {
     const guint8 *matrix;
     const gchar *orientation;
+    gint rotation;
 
     matrix = gst_byte_reader_peek_data_unchecked (&tkhd);
     qtdemux_parse_matrix (&stream->matrix_structure, matrix + 24);
@@ -6483,7 +6484,11 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
     if (!list)
       list = gst_tag_list_new ();
 
-    stream->rotation = qtdemux_stream_get_rotation (qtdemux, stream);
+    rotation = qtdemux_stream_get_rotation (qtdemux, stream);
+    /* the rotation specifies the src->dst rotation, but we need to set
+     * the original rotation, not desired rotation
+     */
+    stream->rotation = (360 - rotation) % 360;
     orientation = qtdemux_angle_to_orientation (stream->rotation);
     gst_tag_list_add (list, GST_TAG_MERGE_REPLACE, GST_TAG_IMAGE_ORIENTATION,
         orientation, NULL, NULL);
