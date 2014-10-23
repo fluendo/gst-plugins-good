@@ -4786,6 +4786,7 @@ gst_qtdemux_chain (GstPad * sinkpad, GstBuffer * inbuf)
             demux->mdatleft -= demux->neededbytes;
           } else {
             GST_DEBUG_OBJECT (demux, "data atom emptied; resuming atom scan");
+            gst_adapter_flush (demux->adapter, demux->todrop);
             /* so we are dropping more than left in this atom */
             demux->todrop -= demux->mdatleft;
             demux->neededbytes -= demux->mdatleft;
