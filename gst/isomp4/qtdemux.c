@@ -10577,7 +10577,7 @@ qtdemux_sub_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
   switch (fourcc) {
     case GST_MAKE_FOURCC ('s', 't', 'p', 'p'):
       _codec ("SMPTE-TT");
-      caps = gst_caps_new_simple ("application/xml+ttml", NULL);
+      caps = gst_caps_new_simple ("application/ttml+xml", NULL);
       break;
     case GST_MAKE_FOURCC ('m', 'p', '4', 's'):
       _codec ("DVD subtitle");
