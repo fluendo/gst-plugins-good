@@ -373,6 +373,7 @@ enum
   SIGNAL_CENC_SENC,
   SIGNAL_PSSH,
   SIGNAL_DECRYPT,
+  SIGNAL_SIDX,
   LAST_SIGNAL
 };
 
@@ -734,6 +735,12 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
       NULL, NULL,
       g_cclosure_marshal_BUFFER__UINT_BUFFER_UINT, GST_TYPE_BUFFER, 3,
       G_TYPE_UINT, GST_TYPE_BUFFER, G_TYPE_UINT);
+
+  gst_qtdemux_signals[SIGNAL_SIDX] =
+      g_signal_new ("sidx", G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, sidx),
+      NULL, NULL,
+      g_cclosure_marshal_VOID__BUFFER, G_TYPE_NONE, 1, GST_TYPE_BUFFER);
 }
 
 static void
@@ -2248,6 +2255,23 @@ qtdemux_parse_uuid (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
   } else {
     GST_DEBUG_OBJECT (qtdemux, "Ignoring unknown uuid");
   }
+}
+
+static void
+qtdemux_parse_sidx (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
+{
+  GstBuffer *buf;
+
+  /* counts as header data */
+  qtdemux->header_size += length;
+
+  /* for the pssh, just send the buffer completely */
+  buf = gst_buffer_new ();
+  GST_BUFFER_OFFSET (buf) = qtdemux->offset;
+  GST_BUFFER_DATA (buf) = (guint8 *)buffer;
+  GST_BUFFER_SIZE (buf) = length;
+  g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_SIDX], 0, buf);
+  gst_buffer_unref (buf);
 }
 
 /* caller verifies at least 8 bytes in buf */
@@ -4692,6 +4716,9 @@ gst_qtdemux_chain (GstPad * sinkpad, GstBuffer * inbuf)
         } else if (fourcc == FOURCC_uuid) {
           GST_DEBUG_OBJECT (demux, "Parsing [uuid]");
           qtdemux_parse_uuid (demux, data, demux->neededbytes);
+        } else if (fourcc == FOURCC_sidx) {
+          GST_DEBUG_OBJECT (demux, "Forwarding [sidx]");
+          qtdemux_parse_sidx (demux, data, demux->neededbytes);
         } else {
           GST_WARNING_OBJECT (demux,
               "Unknown fourcc while parsing header : %" GST_FOURCC_FORMAT,
