@@ -1974,14 +1974,41 @@ gst_qtdemux_handle_sink_event (GstPad * sinkpad, GstEvent * event)
     {
       gint i;
 
-      /* clean up, force EOS if no more info follows */
       gst_adapter_clear (demux->adapter);
-      demux->offset = 0;
-      demux->neededbytes = -1;
-      /* reset flow return, e.g. following seek */
+      if (demux->fragmented) {
+        /* we can receive more data with a fragmented stream after a flush */
+        demux->neededbytes = 16;
+        demux->mdatleft = 0;
+      } else {
+        /* clean up, force EOS if no more info follows */
+        demux->offset = 0;
+        demux->neededbytes = -1;
+      }
       for (i = 0; i < demux->n_streams; i++) {
+
+        /* reset flow return, e.g. following seek */
         demux->streams[i]->last_ret = GST_FLOW_OK;
         demux->streams[i]->sent_eos = FALSE;
+
+        /* reset the samples */
+        demux->streams[i]->n_samples = 0;
+        if (demux->streams[i]->samples) {
+          g_free (demux->streams[i]->samples);
+          demux->streams[i]->samples = NULL;
+        }
+
+        /* reset the segments */
+        demux->streams[i]->n_segments = 0;
+        if (demux->streams[i]->segments) {
+          g_free (demux->streams[i]->segments);
+          demux->streams[i]->segments = NULL;
+        }
+
+        /* reset the pending buffers */
+        while (demux->streams[i]->buffers) {
+          gst_buffer_unref (GST_BUFFER_CAST (demux->streams[i]->buffers->data));
+          demux->streams[i]->buffers = g_slist_delete_link (demux->streams[i]->buffers, demux->streams[i]->buffers);
+        }
       }
       break;
     }
