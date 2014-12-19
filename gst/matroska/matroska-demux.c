@@ -485,6 +485,8 @@ gst_matroska_demux_reset (GstElement * element)
   }
 
   demux->invalid_duration = FALSE;
+
+  demux->cached_length = G_MAXUINT64;
 }
 
 static GstBuffer *
@@ -4496,11 +4498,14 @@ gst_matroska_demux_loop (GstPad * pad)
   }
 
 next:
-  if (G_UNLIKELY (demux->common.offset ==
-          gst_matroska_read_common_get_length (&demux->common))) {
-    GST_LOG_OBJECT (demux, "Reached end of stream");
-    ret = GST_FLOW_UNEXPECTED;
-    goto eos;
+  if (G_UNLIKELY (demux->cached_length == G_MAXUINT64 ||
+          demux->common.offset >= demux->cached_length)) {
+    demux->cached_length = gst_matroska_read_common_get_length (&demux->common);
+    if (demux->common.offset == demux->cached_length) {
+      GST_LOG_OBJECT (demux, "Reached end of stream");
+      ret = GST_FLOW_UNEXPECTED;
+      goto eos;
+    }
   }
 
   return;
