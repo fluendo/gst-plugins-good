@@ -493,6 +493,15 @@ gst_osx_video_sink_get_property (GObject * object, guint prop_id,
   }
 }
 
+static void
+gst_osx_video_sink_roi_changed (GstOSXVideoSink * sink)
+{
+  if (sink->osxwindow) {
+    gst_osx_video_sink_osxwindow_resize (sink, sink->osxwindow,
+        GST_VIDEO_SINK_WIDTH (sink) , GST_VIDEO_SINK_HEIGHT (sink));
+  }
+}
+
 
 static void
 gst_osx_video_sink_init (GstOSXVideoSink * sink)
@@ -510,6 +519,8 @@ gst_osx_video_sink_init (GstOSXVideoSink * sink)
   sink->main_run_loop_running = FALSE;
   sink->app_started = FALSE;
   sink->keep_par = FALSE;
+
+  g_signal_connect (G_OBJECT (sink), "notify::roi", G_CALLBACK (gst_osx_video_sink_roi_changed), sink);
 }
 
 static void
@@ -863,6 +874,7 @@ gst_osx_video_sink_get_type (void)
 - (void) resize
 {
   GstOSXWindow *osxwindow = osxvideosink->osxwindow;
+  GstVideoSink *vsink = GST_VIDEO_SINK (osxvideosink);
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
   if (osxwindow != NULL)
@@ -874,6 +886,7 @@ gst_osx_video_sink_get_type (void)
     }
     if (osxwindow->gstview) {
         [osxwindow->gstview setVideoSize :(int)osxwindow->width :(int)osxwindow->height];
+        [osxwindow->gstview setROI:NSMakeRect (vsink->roi.x, vsink->roi.y, vsink->roi.w, vsink->roi.h)];
     }
     GST_INFO_OBJECT (osxvideosink, "done");
   }

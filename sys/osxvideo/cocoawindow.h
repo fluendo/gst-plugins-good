@@ -49,11 +49,13 @@ struct _GstOSXImage;
     NSTrackingArea *trackingArea;
     GstNavigation *navigation;
     NSRect drawingBounds;
+    NSRect regionOfInterest;
     NSThread *mainThread;
     NSUInteger savedModifierFlags;
 }
 - (void) drawQuad;
 - (void) drawRect: (NSRect) rect;
+- (void) setROI: (NSRect) rect;
 - (id) initWithFrame: (NSRect) frame;
 - (void) initTextures;
 - (void) reloadTexture;

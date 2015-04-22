@@ -411,6 +411,7 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
   width = frame.size.width;
   height = frame.size.height;
   drawingBounds = NSMakeRect(0, 0, width, height);
+  regionOfInterest = NSMakeRect (0, 0, 0, 0);
 
   GST_LOG ("Width: %d Height: %d", width, height);
 
@@ -556,6 +557,7 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
 }
 
 - (void) drawQuad {
+#if 0
   f_x = 1.0;
   f_y = 1.0;
 
@@ -573,6 +575,36 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
   glTexCoord2f ((float) width, 0.0);
   glVertex2f (f_x, f_y);
   glEnd ();
+#else
+  gint ax, ay, bx, by, cx, cy, dx, dy, tmpx, tmpy;
+
+  ax = regionOfInterest.origin.x; ay = regionOfInterest.origin.y;
+  bx = ax + regionOfInterest.size.width; by = ay;
+  cx = bx; cy = by + regionOfInterest.size.height;
+  dx = ax; dy = cy;
+
+  GST_LOG ("HACKME a %dx%d c %dx%d", ax, ay, cx, cy);
+
+  glBegin (GL_QUADS);
+  glTexCoord2i (ax, ay);
+  glVertex2f (-1.0, 1.0);
+  glTexCoord2i (dx, dy);
+  glVertex2f (-1.0, -1.0);
+  glTexCoord2i (cx, cy);
+  glVertex2f (1.0, -1.0);
+  glTexCoord2i (bx, by);
+  glVertex2f (1.0, 1.0);
+  glEnd ();
+#endif
+}
+
+- (void) setROI:(NSRect) rect {
+  regionOfInterest.origin.x = rect.origin.x;
+  regionOfInterest.origin.y = rect.origin.y;
+  regionOfInterest.size.width = rect.size.width ? rect.size.width : width;
+  regionOfInterest.size.height = rect.size.height ? rect.size.height : height;
+  GST_LOG ("region of interest now is : %fx%f %f/%f", regionOfInterest.origin.x, regionOfInterest.origin.y,
+      regionOfInterest.size.width, regionOfInterest.size.height);
 }
 
 - (void) drawRect:(NSRect) rect {
