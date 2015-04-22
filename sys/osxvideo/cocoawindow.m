@@ -600,8 +600,9 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
 - (void) displayTexture {
   if ([self lockFocusIfCanDraw]) {
 
-    [self drawRect:[self bounds]];
     [self reloadTexture];
+
+    [self drawRect:[self bounds]];
 
     [self unlockFocus];
 
