@@ -97,6 +97,7 @@ struct _GstOSXVideoSink {
   gboolean app_started;
   gboolean keep_par;
   gboolean embed;
+  GstBuffer *cur_image;
 };
 
 struct _GstOSXVideoSinkClass {

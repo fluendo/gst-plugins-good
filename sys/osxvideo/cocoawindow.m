@@ -479,6 +479,8 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
 
   [actualContext makeCurrentContext];
 
+  GST_LOG ("Init Texture");
+
   /* Free previous texture if any */
   if (pi_texture) {
     glDeleteTextures (1, (GLuint *)&pi_texture);
@@ -582,8 +584,6 @@ const gchar* gst_keycode_to_keyname(gint16 keycode)
   bx = ax + regionOfInterest.size.width; by = ay;
   cx = bx; cy = by + regionOfInterest.size.height;
   dx = ax; dy = cy;
-
-  GST_LOG ("HACKME a %dx%d c %dx%d", ax, ay, cx, cy);
 
   glBegin (GL_QUADS);
   glTexCoord2i (ax, ay);
