@@ -403,10 +403,6 @@ gst_osx_video_sink_change_state (GstElement * element,
     case GST_STATE_CHANGE_PAUSED_TO_READY:
       GST_VIDEO_SINK_WIDTH (osxvideosink) = 0;
       GST_VIDEO_SINK_HEIGHT (osxvideosink) = 0;
-      if (osxvideosink->cur_image) {
-        gst_buffer_unref (osxvideosink->cur_image);
-        osxvideosink->cur_image = NULL;
-      }
       osxvideosink->app_started = FALSE;
       gst_osx_video_sink_osxwindow_destroy (osxvideosink);
       break;
@@ -430,20 +426,6 @@ gst_osx_video_sink_show_frame (GstBaseSink * bsink, GstBuffer * buf)
   osxvideosink = GST_OSX_VIDEO_SINK (bsink);
 
   GST_DEBUG_OBJECT (osxvideosink, "show_frame %p", buf);
-
-  /* Store a reference to the last image we put, lose the previous one */
-  if (buf && osxvideosink->cur_image != buf) {
-    if (osxvideosink->cur_image) {
-      GST_LOG_OBJECT (osxvideosink, "unreffing %p", osxvideosink->cur_image);
-      gst_buffer_unref (osxvideosink->cur_image);
-    }
-    GST_LOG_OBJECT (osxvideosink, "reffing %p as our current image", buf);
-    osxvideosink->cur_image = gst_buffer_ref (buf);
-  }
-
-  if (!buf) {
-    buf = osxvideosink->cur_image;
-  }
 
   bufferobject = [[GstBufferObject alloc] initWithBuffer:buf];
   gst_osx_video_sink_call_from_main_thread(osxvideosink,
@@ -528,7 +510,6 @@ gst_osx_video_sink_init (GstOSXVideoSink * sink)
 {
   sink->osxwindow = NULL;
   sink->superview = NULL;
-  sink->cur_image = NULL;
   sink->osxvideosinkobject = [[GstOSXVideoSinkObject alloc] initWithSink:sink];
 #ifdef RUN_NS_APP_THREAD
   sink->loop_thread_lock = g_mutex_new ();
@@ -740,7 +721,14 @@ gst_osx_video_sink_set_window_handle (GstXOverlay * overlay, guintptr handle_id)
 static void
 gst_osx_video_sink_expose (GstXOverlay * overlay)
 {
-  gst_osx_video_sink_show_frame (GST_BASE_SINK (overlay), NULL);
+  GstBaseSink *bsink = GST_BASE_SINK (overlay);
+  GstBuffer *last_buffer;
+
+  last_buffer = gst_base_sink_get_last_buffer (bsink);
+  if (last_buffer) {
+    gst_osx_video_sink_show_frame (bsink, last_buffer);
+    gst_buffer_unref (last_buffer);
+  }
 }
 
 static void
