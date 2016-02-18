@@ -6097,7 +6097,10 @@ qtdemux_parse_segments (GstQTDemux * qtdemux, QtDemuxStream * stream,
       if (media_time == G_MAXUINT32)
         continue;
 
+      /* 0 duration, the segment must expand until the end of the stream */
       duration = QT_UINT32 (buffer + 16 + i * 12);
+      if (!duration)
+        duration = stream->duration - time;
 
       segment = &stream->segments[count++];
 
