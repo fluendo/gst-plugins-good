@@ -23,9 +23,7 @@
 
 #include <gst/gst.h>
 
-G_BEGIN_DECLS
-
-static const guint32 ff_qt_default_palette_2[2] = {
+G_BEGIN_DECLS static const guint32 ff_qt_default_palette_2[2] = {
   0xffffff, 0x000000
 };
 
@@ -39,6 +37,7 @@ static const guint32 ff_qt_default_palette_16[16] = {
   0xffffff, 0x474837, 0x7a5e55, 0xdfd0ab,
   0xfffbf9, 0xe8cac5, 0x8a7c77, 0x000000
 };
+
 static const guint32 ff_qt_default_palette_256[256] = {
   0xFFFFFF, 0xFFFFCC, 0xFFFF99, 0xFFFF66, 0xFFFF33, 0xFFFF00,
   0xFFCCFF, 0xFFCCCC, 0xFFCC99, 0xFFCC66, 0xFFCC33, 0xFFCC00,
@@ -133,5 +132,4 @@ static const guint32 ff_qt_grayscale_palette_256[256] = {
 };
 
 G_END_DECLS
-
 #endif /* __GST_QTPALETTE_H__ */
