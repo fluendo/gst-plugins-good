@@ -24,9 +24,7 @@
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
 
-G_BEGIN_DECLS
-
-GST_DEBUG_CATEGORY_EXTERN (qtdemux_debug);
+G_BEGIN_DECLS GST_DEBUG_CATEGORY_EXTERN (qtdemux_debug);
 #define GST_CAT_DEFAULT qtdemux_debug
 
 #define GST_TYPE_QTDEMUX \
@@ -53,26 +51,28 @@ typedef struct _GstQTDemuxClass GstQTDemuxClass;
 typedef struct _QtDemuxStream QtDemuxStream;
 typedef struct _QtDemuxMatrix QtDemuxMatrix;
 
-struct _QtDemuxMatrix {
+struct _QtDemuxMatrix
+{
   gint32 a, b, u;
   gint32 c, d, v;
   gint32 x, y, w;
 };
 
 
-struct _GstQTDemux {
+struct _GstQTDemux
+{
   GstElement element;
 
   /* pads */
   GstPad *sinkpad;
 
   QtDemuxStream *streams[GST_QTDEMUX_MAX_STREAMS];
-  gint     n_streams;
-  gint     n_video_streams;
-  gint     n_audio_streams;
-  gint     n_sub_streams;
+  gint n_streams;
+  gint n_video_streams;
+  gint n_audio_streams;
+  gint n_sub_streams;
 
-  guint  major_brand;
+  guint major_brand;
   GstBuffer *comp_brands;
   GNode *moov_node;
   GNode *moov_node_compressed;
@@ -126,17 +126,18 @@ struct _GstQTDemux {
   gboolean supports_drm;
 };
 
-struct _GstQTDemuxClass {
+struct _GstQTDemuxClass
+{
   GstElementClass parent_class;
   void (*cenc_tenc) (GstQTDemux * demux, guint32 track_id, GstBuffer * tenc);
   void (*cenc_senc) (GstQTDemux * demux, guint32 track_id, GstBuffer * senc);
   void (*pssh) (GstQTDemux * demux, GstBuffer * pssh);
-  GstBuffer* (*decrypt) (GstQTDemux * demux, guint32 track_id, GstBuffer *buff, guint32 sample_index);
+  GstBuffer *(*decrypt) (GstQTDemux * demux, guint32 track_id, GstBuffer * buff,
+      guint32 sample_index);
   void (*sidx) (GstQTDemux * demux, GstBuffer * sidx);
 };
 
 GType gst_qtdemux_get_type (void);
 
 G_END_DECLS
-
 #endif /* __GST_QTDEMUX_H__ */
