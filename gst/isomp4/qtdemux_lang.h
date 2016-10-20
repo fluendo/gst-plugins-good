@@ -21,11 +21,8 @@
 #define __GST_QTDEMUX_LANG_H__
 
 G_BEGIN_DECLS
-
 #include <glib.h>
-
 void qtdemux_lang_map_qt_code_to_iso (gchar id[4], guint16 qt_lang_code);
 
 G_END_DECLS
-
 #endif /* __GST_QTDEMUX_LANG_H__ */
