@@ -5634,6 +5634,9 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
 
       switch (palette_count) {
         case 0:
+          GST_ELEMENT_WARNING (qtdemux, STREAM, DEMUX,
+              (_("The video in this file might not play correctly.")),
+              ("unsupported palette depth %d", depth));
           break;
         case 2:
           palette_data = ff_qt_default_palette_2;
@@ -5652,11 +5655,6 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
             palette_data = ff_qt_grayscale_palette_256;
           else
             palette_data = ff_qt_default_palette_256;
-          break;
-        default:
-          GST_ELEMENT_WARNING (qtdemux, STREAM, DEMUX,
-              (_("The video in this file might not play correctly.")),
-              ("unsupported palette depth %d", depth));
           break;
       }
       if (palette_data) {
