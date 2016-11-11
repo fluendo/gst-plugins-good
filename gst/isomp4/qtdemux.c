@@ -374,6 +374,7 @@ enum
   SIGNAL_PSSH,
   SIGNAL_DECRYPT,
   SIGNAL_SIDX,
+  SIGNAL_EMSG,
   LAST_SIGNAL
 };
 
@@ -621,6 +622,36 @@ qtdemux_stream_get_rotation (GstQTDemux * qtdemux, QtDemuxStream * stream)
 }
 
 static void
+g_cclosure_marshal_VOID__INT64_BUFFER (GClosure * closure,
+    GValue * return_value G_GNUC_UNUSED,
+    guint n_param_values,
+    const GValue * param_values,
+    gpointer invocation_hint G_GNUC_UNUSED, gpointer marshal_data)
+{
+  typedef void (*GMarshalFunc_VOID__INT64_BUFFER) (gpointer data1,
+      gint64 arg_1, gpointer arg_2, gpointer data2);
+  register GMarshalFunc_VOID__INT64_BUFFER callback;
+  register GCClosure *cc = (GCClosure *) closure;
+  register gpointer data1, data2;
+
+  g_return_if_fail (n_param_values == 3);
+
+  if (G_CCLOSURE_SWAP_DATA (closure)) {
+    data1 = closure->data;
+    data2 = g_value_peek_pointer (param_values + 0);
+  } else {
+    data1 = g_value_peek_pointer (param_values + 0);
+    data2 = closure->data;
+  }
+  callback =
+      (GMarshalFunc_VOID__INT64_BUFFER) (marshal_data ? marshal_data :
+      cc->callback);
+
+  callback (data1, g_value_get_int64 (param_values + 1),
+      g_value_peek_pointer (param_values + 2), data2);
+}
+
+static void
 gst_qtdemux_base_init (gpointer klass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
@@ -741,6 +772,12 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, sidx),
       NULL, NULL,
       g_cclosure_marshal_VOID__BUFFER, G_TYPE_NONE, 1, GST_TYPE_BUFFER);
+  gst_qtdemux_signals[SIGNAL_EMSG] =
+      g_signal_new ("emsg", G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, emsg),
+      NULL, NULL,
+      g_cclosure_marshal_VOID__INT64_BUFFER, G_TYPE_NONE, 2, G_TYPE_INT64,
+      GST_TYPE_BUFFER);
 }
 
 static void
@@ -2274,6 +2311,18 @@ qtdemux_parse_sidx (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
   gst_buffer_unref (buf);
 }
 
+static void
+qtdemux_parse_emsg (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
+{
+  GstBuffer *emsg = NULL;
+  emsg = gst_buffer_new ();
+  GST_BUFFER_DATA (emsg) = (guint8 *) buffer;
+  GST_BUFFER_SIZE (emsg) = length;
+  g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_EMSG], 0,
+      qtdemux->earliest_presentation_time, emsg);
+  gst_buffer_unref (emsg);
+}
+
 /* caller verifies at least 8 bytes in buf */
 static void
 extract_initial_length_and_fourcc (const guint8 * data, guint size,
@@ -2929,6 +2978,8 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
     /* iterate all siblings */
     traf_node = qtdemux_tree_get_sibling_by_type (traf_node, FOURCC_traf);
   }
+  qtdemux->earliest_presentation_time =
+      gst_util_uint64_scale (decode_time, GST_SECOND, stream->timescale);
   g_node_destroy (moof_node);
   return TRUE;
 
@@ -4719,6 +4770,9 @@ gst_qtdemux_chain (GstPad * sinkpad, GstBuffer * inbuf)
         } else if (fourcc == FOURCC_sidx) {
           GST_DEBUG_OBJECT (demux, "Forwarding [sidx]");
           qtdemux_parse_sidx (demux, data, demux->neededbytes);
+        } else if (fourcc == FOURCC_emsg) {
+          GST_DEBUG_OBJECT (demux, "Parsing [emsg]");
+          qtdemux_parse_emsg (demux, data, demux->neededbytes);
         } else {
           GST_WARNING_OBJECT (demux,
               "Unknown fourcc while parsing header : %" GST_FOURCC_FORMAT,

@@ -124,6 +124,8 @@ struct _GstQTDemux
 
   /* DRM is supported only if there's a listener for decrypt signal */
   gboolean supports_drm;
+
+  gint64 earliest_presentation_time;
 };
 
 struct _GstQTDemuxClass
@@ -135,6 +137,7 @@ struct _GstQTDemuxClass
   GstBuffer *(*decrypt) (GstQTDemux * demux, guint32 track_id, GstBuffer * buff,
       guint32 sample_index);
   void (*sidx) (GstQTDemux * demux, GstBuffer * sidx);
+  void (*emsg) (GstQTDemux * demux, GstBuffer * buffer);
 };
 
 GType gst_qtdemux_get_type (void);

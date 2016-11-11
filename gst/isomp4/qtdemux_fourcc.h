@@ -252,5 +252,6 @@ G_BEGIN_DECLS
 /* DECE/UV */
 #define FOURCC_subt     GST_MAKE_FOURCC('s','u','b','t')
 #define FOURCC_sidx     GST_MAKE_FOURCC('s','i','d','x')
+#define FOURCC_emsg     GST_MAKE_FOURCC('e','m','s','g')
     G_END_DECLS
 #endif /* __GST_QTDEMUX_FOURCC_H__ */
