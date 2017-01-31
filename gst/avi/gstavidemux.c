@@ -1947,6 +1947,10 @@ gst_avi_demux_check_caps (GstAviDemux * avi, GstCaps * caps)
             "alignment", G_TYPE_STRING, "au", NULL);
       }
     }
+  } else {
+    /* Let know downstream that the stream is an annex-b bytestream instead of avc */
+    gst_structure_set (s, "stream-format", G_TYPE_STRING, "byte-stream",
+      "alignment", G_TYPE_STRING, "au", NULL);
   }
 
   return caps;
