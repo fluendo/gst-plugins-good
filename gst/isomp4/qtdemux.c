@@ -2831,7 +2831,7 @@ invalid_track:
   }
 unknown_stream:
   {
-    GST_DEBUG_OBJECT (qtdemux, "unknown stream in tfhd");
+    GST_WARNING_OBJECT (qtdemux, "unknown stream in tfhd");
     return TRUE;
   }
 }
@@ -2897,6 +2897,12 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
     if (!qtdemux_parse_tfhd (qtdemux, &tfhd_data, &stream, &ds_duration,
             &ds_size, &ds_flags, &ds_description_idx, &base_offset))
       goto missing_tfhd;
+    if (G_UNLIKELY (!stream)) {
+      /* we lost track of offset, we'll need to regain it,
+       * but can delay complaining until later or avoid doing so altogether */
+      base_offset = -2;
+      goto next;
+    }
     tfdt_node =
         qtdemux_tree_get_child_by_type_full (traf_node, FOURCC_tfdt,
         &tfdt_data);
@@ -2925,12 +2931,6 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
       }
     }
 
-    if (G_UNLIKELY (!stream)) {
-      /* we lost track of offset, we'll need to regain it,
-       * but can delay complaining until later or avoid doing so altogether */
-      base_offset = -2;
-      goto next;
-    }
 
     /* On encrypted streams emit a signal with the senc node */
     if (stream->encrypted) {
