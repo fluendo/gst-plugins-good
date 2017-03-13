@@ -2908,6 +2908,8 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
         &tfdt_data);
     if (tfdt_node) {
       qtdemux_parse_tfdt (qtdemux, &tfdt_data, &decode_time);
+      qtdemux->earliest_presentation_time =
+          gst_util_uint64_scale (decode_time, GST_SECOND, stream->timescale);
       /* If there is a new segment pending, update the start */
       if (qtdemux->pending_newsegment) {
         GstFormat format;
@@ -2918,8 +2920,7 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
         gst_event_parse_new_segment (qtdemux->pending_newsegment, &update,
             &rate, &format, &start, &stop, &time);
 
-        start_offset =
-            gst_util_uint64_scale (decode_time, GST_SECOND, stream->timescale);
+        start_offset = qtdemux->earliest_presentation_time;
 
         GST_DEBUG_OBJECT (qtdemux, "updating newsegment start with %"
             GST_TIME_FORMAT " (tfdt)", GST_TIME_ARGS (start + start_offset));
@@ -2978,8 +2979,6 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
     /* iterate all siblings */
     traf_node = qtdemux_tree_get_sibling_by_type (traf_node, FOURCC_traf);
   }
-  qtdemux->earliest_presentation_time =
-      gst_util_uint64_scale (decode_time, GST_SECOND, stream->timescale);
   g_node_destroy (moof_node);
   return TRUE;
 
