@@ -238,6 +238,21 @@ G_BEGIN_DECLS
 /* MPEG DASH */
 #define FOURCC_tfdt     GST_MAKE_FOURCC('t','f','d','t')
 
+#define FOURCC_encv     GST_MAKE_FOURCC('e','n','c','v')
+#define FOURCC_enca     GST_MAKE_FOURCC('e','n','c','a')
+#define FOURCC_sinf     GST_MAKE_FOURCC('s','i','n','f')
+#define FOURCC_schm     GST_MAKE_FOURCC('s','c','h','m')
+#define FOURCC_schi     GST_MAKE_FOURCC('s','c','h','i')
+
+/* ISO/IEC 23001-7 */
+#define FOURCC_cenc     GST_MAKE_FOURCC('c','e','n','c')
+#define FOURCC_tenc     GST_MAKE_FOURCC('t','e','n','c')
+#define FOURCC_senc     GST_MAKE_FOURCC('s','e','n','c')
+
+/* Portable interoperable file format (PIFF) */
+#define FOURCC_piff     GST_MAKE_FOURCC('p','i','f','f')
+#define FOURCC_pssh     GST_MAKE_FOURCC('p','s','s','h')
+
 G_END_DECLS
 
 #endif /* __GST_QTDEMUX_FOURCC_H__ */
