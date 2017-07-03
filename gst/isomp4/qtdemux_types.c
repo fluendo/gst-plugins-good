@@ -172,6 +172,17 @@ static const QtNodeType qt_node_types[] = {
   {FOURCC_ovc1, "ovc1", 0},
   {FOURCC_owma, "owma", 0},
   {FOURCC_tfdt, "Track fragment decode time", 0, qtdemux_dump_tfdt},
+  {FOURCC_frma, "frma", 0},
+  {FOURCC_encv, "encv", 0},
+  {FOURCC_enca, "enca", 0},
+  {FOURCC_sinf, "sinf", QT_FLAG_CONTAINER,},
+  {FOURCC_schm, "schm", 0},
+  {FOURCC_schi, "schi", QT_FLAG_CONTAINER,},
+  {FOURCC_cenc, "cenc", 0},
+  {FOURCC_tenc, "tenc", 0},
+  {FOURCC_senc, "senc", 0},
+  {FOURCC_pssh, "pssh", 0},
+  {FOURCC_uuid, "uuid", 0},
   {0, "unknown", 0,},
 };
 
