@@ -121,10 +121,17 @@ struct _GstQTDemux {
 
   gboolean upstream_seekable;
   gboolean upstream_size;
+
+  /* DRM is supported only if there's a listener for decrypt signal */
+  gboolean supports_drm;
 };
 
 struct _GstQTDemuxClass {
   GstElementClass parent_class;
+  void (*cenc_tenc) (GstQTDemux * demux, guint32 track_id, GstBuffer * tenc);
+  void (*cenc_senc) (GstQTDemux * demux, guint32 track_id, GstBuffer * senc);
+  void (*pssh) (GstQTDemux * demux, GstBuffer * pssh);
+  GstBuffer* (*decrypt) (GstQTDemux * demux, guint32 track_id, GstBuffer *buff, guint32 sample_index);
 };
 
 GType gst_qtdemux_get_type (void);
