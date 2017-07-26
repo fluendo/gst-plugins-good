@@ -297,7 +297,7 @@ struct _QtDemuxStream
   GstTagList *pending_tags;
   gboolean send_global_tags;
 
-  GstEvent *pending_event;
+  GList *pending_events;
 
   GstByteReader stco;
   GstByteReader stsz;
@@ -2038,6 +2038,28 @@ gst_qtdemux_handle_sink_event (GstPad * sinkpad, GstEvent * event)
           gst_qtdemux_post_no_playable_stream_error (demux);
       }
       break;
+    case GST_EVENT_CUSTOM_DOWNSTREAM:
+    {
+      gint i;
+      gboolean has_valid_stream = FALSE;
+
+      /* For custom downstream events, we need to keep them in our own
+       * list of pending events, once a stream is created copy those
+       * events on each stream's pending events
+       */
+      for (i = 0; i < demux->n_streams; i++) {
+        if (demux->streams[i]->pad != NULL) {
+          has_valid_stream = TRUE;
+          break;
+        }
+      }
+      if (!has_valid_stream) {
+        demux->pending_events = g_list_append (demux->pending_events, event);
+        res = TRUE;
+        goto drop;
+      }
+      break;
+    }
     default:
       break;
   }
@@ -2120,6 +2142,10 @@ gst_qtdemux_stream_free (GstQTDemux * qtdemux, QtDemuxStream * stream)
   if (stream->pending_tags)
     gst_tag_list_free (stream->pending_tags);
   g_free (stream->redirect_uri);
+  if (stream->pending_events) {
+    g_list_free_full (stream->pending_events, (GDestroyNotify) gst_event_unref);
+    stream->pending_events = NULL;
+  }
   /* free stbl sub-atoms */
   gst_qtdemux_stbl_free (stream);
   g_free (stream);
@@ -2198,6 +2224,11 @@ gst_qtdemux_change_state (GstElement * element, GstStateChange transition)
       if (qtdemux->comp_brands)
         gst_buffer_unref (qtdemux->comp_brands);
       qtdemux->comp_brands = NULL;
+      if (qtdemux->pending_events) {
+        g_list_free_full (qtdemux->pending_events,
+            (GDestroyNotify) gst_event_unref);
+        qtdemux->pending_events = NULL;
+      }
       break;
     default:
       break;
@@ -4067,12 +4098,16 @@ gst_qtdemux_process_buffer (GstQTDemux * qtdemux, QtDemuxStream * stream,
   data = GST_BUFFER_DATA (buf);
   size = GST_BUFFER_SIZE (buf);
 
-  /* not many cases for now */
-  if (G_UNLIKELY (stream->fourcc == FOURCC_mp4s)) {
-    /* send a one time dvd clut event */
-    if (stream->pending_event && stream->pad)
-      gst_pad_push_event (stream->pad, stream->pending_event);
-    stream->pending_event = NULL;
+  /* send any pending event */
+  if (stream->pending_events && stream->pad) {
+    GList *l;
+
+    for (l = stream->pending_events; l != NULL; l = l->next) {
+      GstEvent *pending_event = (GstEvent *) l->data;
+      gst_pad_push_event (stream->pad, pending_event);
+    }
+    g_list_free (stream->pending_events);
+    stream->pending_events = NULL;
     /* no further processing needed */
     stream->need_process = FALSE;
   }
@@ -4260,6 +4295,22 @@ gst_qtdemux_loop_state_movie (GstQTDemux * qtdemux)
   gint i;
 
   gst_qtdemux_push_pending_newsegment (qtdemux);
+  /* Copy every pending event on each stream */
+  for (i = 0; i < qtdemux->n_streams; i++) {
+    /* Add pending events from the demuxer to each stream */
+    if (qtdemux->pending_events) {
+      GList *l;
+      for (l = qtdemux->pending_events; l; l = l->next) {
+        GstEvent *pending_event = (GstEvent *) l->data;
+        qtdemux->streams[i]->pending_events =
+            g_list_append (qtdemux->streams[i]->pending_events,
+            gst_event_ref (pending_event));
+      }
+      qtdemux->streams[i]->need_process = TRUE;
+    }
+  }
+  g_list_free_full (qtdemux->pending_events, (GDestroyNotify) gst_event_unref);
+  qtdemux->pending_events = NULL;
 
   /* Figure out the next stream sample to output, min_time is expressed in
    * global time and runs over the edit list segments. */
@@ -4897,10 +4948,24 @@ gst_qtdemux_chain (GstPad * sinkpad, GstBuffer * inbuf)
            */
           qtdemux_expose_streams (demux);
           gst_qtdemux_push_pending_newsegment (demux);
-          /* clear to send tags on all streams */
           for (i = 0; i < demux->n_streams; i++) {
+            /* clear to send tags on all streams */
             gst_qtdemux_push_tags (demux, demux->streams[i]);
+            /* Add pending events from the demuxer to each stream */
+            if (demux->pending_events) {
+              GList *l;
+              for (l = demux->pending_events; l; l = l->next) {
+                GstEvent *pending_event = (GstEvent *) l->data;
+                demux->streams[i]->pending_events =
+                    g_list_append (demux->streams[i]->pending_events,
+                    gst_event_ref (pending_event));
+              }
+              demux->streams[i]->need_process = TRUE;
+            }
           }
+          g_list_free_full (demux->pending_events,
+              (GDestroyNotify) gst_event_unref);
+          demux->pending_events = NULL;
         }
 
         /* Figure out which stream this is packet belongs to */
@@ -8071,8 +8136,8 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
               NULL);
 
           /* store event and trigger custom processing */
-          stream->pending_event =
-              gst_event_new_custom (GST_EVENT_CUSTOM_DOWNSTREAM, s);
+          stream->pending_events = g_list_append (stream->pending_events,
+              gst_event_new_custom (GST_EVENT_CUSTOM_DOWNSTREAM, s));
           stream->need_process = TRUE;
         }
         break;
