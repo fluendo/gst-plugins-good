@@ -373,7 +373,6 @@ enum
   SIGNAL_CENC_SENC,
   SIGNAL_PSSH,
   SIGNAL_DECRYPT,
-  SIGNAL_SIDX,
   SIGNAL_EMSG,
   LAST_SIGNAL
 };
@@ -767,11 +766,6 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
       g_cclosure_marshal_BUFFER__UINT_BUFFER_UINT, GST_TYPE_BUFFER, 3,
       G_TYPE_UINT, GST_TYPE_BUFFER, G_TYPE_UINT);
 
-  gst_qtdemux_signals[SIGNAL_SIDX] =
-      g_signal_new ("sidx", G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, sidx),
-      NULL, NULL,
-      g_cclosure_marshal_VOID__BUFFER, G_TYPE_NONE, 1, GST_TYPE_BUFFER);
   gst_qtdemux_signals[SIGNAL_EMSG] =
       g_signal_new ("emsg", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, emsg),
@@ -1133,6 +1127,17 @@ gst_qtdemux_push_event (GstQTDemux * qtdemux, GstEvent * event)
   /* if it is EOS and there are no pads, post an error */
   if (!has_valid_stream && etype == GST_EVENT_EOS) {
     gst_qtdemux_post_no_playable_stream_error (qtdemux);
+  }
+}
+
+/* push event on all source pads; takes ownership of the event */
+static void
+gst_qtdemux_push_or_queue_event (GstQTDemux * qtdemux, GstEvent * event)
+{
+  if (!qtdemux->n_streams) {
+    qtdemux->pending_events = g_list_append (qtdemux->pending_events, event);
+  } else {
+    gst_qtdemux_push_event (qtdemux, event);
   }
 }
 
@@ -2328,6 +2333,8 @@ qtdemux_parse_uuid (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
 static void
 qtdemux_parse_sidx (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
 {
+  GstEvent *event;
+  GstStructure *s;
   GstBuffer *buf;
 
   /* counts as header data */
@@ -2338,7 +2345,10 @@ qtdemux_parse_sidx (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
   GST_BUFFER_OFFSET (buf) = qtdemux->offset;
   GST_BUFFER_DATA (buf) = (guint8 *) buffer;
   GST_BUFFER_SIZE (buf) = length;
-  g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_SIDX], 0, buf);
+  s = gst_structure_new ("video/quicktime+sidx", "atom", GST_TYPE_BUFFER, buf,
+      NULL);
+  event = gst_event_new_custom (GST_EVENT_CUSTOM_DOWNSTREAM, s);
+  gst_qtdemux_push_or_queue_event (qtdemux, event);
   gst_buffer_unref (buf);
 }
 
