@@ -111,6 +111,7 @@ struct _GstQTDemux
   GstSegment segment;
   gboolean segment_running;
   GstEvent *pending_newsegment;
+  GList *pending_events;
 
   /* gst index support */
   GstIndex *element_index;
