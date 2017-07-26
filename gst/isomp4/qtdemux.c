@@ -10626,6 +10626,22 @@ qtdemux_video_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
   return caps;
 }
 
+/* MSTAR2016 specific support */
+#if MSTAR_SUPPORT
+#   define CAPS_MP4A_STRING  "audio/mpeg-es"
+#   define CAPS_MP3_STRING  "audio/mpeg-es"
+#   define CAPS_EC3_STRING  "audio/x-eac3-es"
+#   define CAPS_AC3_STRING  "audio/x-ac3-es"
+/* to be remove when this MSTAR ticket 1350210 has been fixed. */
+#   define CAPS_DTS_STRING  "audio/x-gst-fourcc-dtse"
+#else
+#   define CAPS_MP4A_STRING  "audio/mpeg"
+#   define CAPS_MP3_STRING  "audio/mpeg"
+#   define CAPS_EC3_STRING  "audio/x-eac3"
+#   define CAPS_AC3_STRING  "audio/x-ac3"
+#   define CAPS_DTS_STRING  "audio/x-dts"
+#endif
+
 static GstCaps *
 qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
     guint32 fourcc, const guint8 * data, int len, gchar ** codec_name)
@@ -10725,19 +10741,19 @@ qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
     case GST_MAKE_FOURCC ('.', 'm', 'p', '3'):
       _codec ("MPEG-1 layer 3");
       /* MPEG layer 3, CBR & VBR (QT4.1 and later) */
-      caps = gst_caps_new_simple ("audio/mpeg", "layer", G_TYPE_INT, 3,
+      caps = gst_caps_new_simple (CAPS_MP3_STRING, "layer", G_TYPE_INT, 3,
           "mpegversion", G_TYPE_INT, 1, NULL);
       break;
     case 0x20736d:
     case GST_MAKE_FOURCC ('e', 'c', '-', '3'):
       _codec ("EAC-3 audio");
-      caps = gst_caps_new_simple ("audio/x-eac3",
+      caps = gst_caps_new_simple (CAPS_EC3_STRING,
           "framed", G_TYPE_BOOLEAN, TRUE, NULL);
       stream->sampled = TRUE;
       break;
     case GST_MAKE_FOURCC ('a', 'c', '-', '3'):
       _codec ("AC-3 audio");
-      caps = gst_caps_new_simple ("audio/x-ac3",
+      caps = gst_caps_new_simple (CAPS_AC3_STRING,
           "framed", G_TYPE_BOOLEAN, TRUE, NULL);
       stream->sampled = TRUE;
       break;
@@ -10761,7 +10777,7 @@ qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
       break;
     case GST_MAKE_FOURCC ('m', 'p', '4', 'a'):
       _codec ("MPEG-4 AAC audio");
-      caps = gst_caps_new_simple ("audio/mpeg",
+      caps = gst_caps_new_simple (CAPS_MP4A_STRING,
           "mpegversion", G_TYPE_INT, 4, "framed", G_TYPE_BOOLEAN, TRUE,
           "stream-format", G_TYPE_STRING, "raw", NULL);
       break;
@@ -10814,7 +10830,7 @@ qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
     case FOURCC_dtsh:
     case FOURCC_dtse:
       _codec ("DTS");
-      caps = gst_caps_new_simple ("audio/x-dts", NULL);
+      caps = gst_caps_new_simple (CAPS_DTS_STRING, NULL);
       break;
     case GST_MAKE_FOURCC ('q', 't', 'v', 'r'):
       /* ? */
