@@ -137,7 +137,6 @@ struct _GstQTDemuxClass
   void (*pssh) (GstQTDemux * demux, GstBuffer * pssh);
   GstBuffer *(*decrypt) (GstQTDemux * demux, guint32 track_id, GstBuffer * buff,
       guint32 sample_index);
-  void (*sidx) (GstQTDemux * demux, GstBuffer * sidx);
   void (*emsg) (GstQTDemux * demux, GstBuffer * buffer);
 };
 
