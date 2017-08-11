@@ -7165,8 +7165,11 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
   gchar *codec = NULL;
   int offset;
 
+  /* We are going to replace/merge the taglist, but we might fail
+   * we better do it on a copy
+   */
   if (stream->pending_tags)
-    list = stream->pending_tags;
+    list = gst_tag_list_copy (stream->pending_tags);
 
   if ((fourcc == FOURCC_drms) || (fourcc == FOURCC_drmi))
     goto error_encrypted;
@@ -7916,7 +7919,8 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
       GstStructure *s;
       gint bitrate = 0;
 
-      list = gst_tag_list_new ();
+      if (!list)
+        list = gst_tag_list_new ();
       gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
           GST_TAG_AUDIO_CODEC, codec, NULL);
       g_free (codec);
@@ -8156,7 +8160,8 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     stream->caps =
         qtdemux_sub_caps (qtdemux, stream, stream->fourcc, stsd_data, &codec);
     if (codec) {
-      list = gst_tag_list_new ();
+      if (!list)
+        list = gst_tag_list_new ();
       gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
           GST_TAG_SUBTITLE_CODEC, codec, NULL);
       g_free (codec);
@@ -8283,6 +8288,10 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     lang_code = gst_tag_get_language_code (stream->lang_id);
     gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
         GST_TAG_LANGUAGE_CODE, (lang_code) ? lang_code : stream->lang_id, NULL);
+  }
+
+  if (stream->pending_tags) {
+    gst_tag_list_free (stream->pending_tags);
   }
 
   stream->pending_tags = list;
