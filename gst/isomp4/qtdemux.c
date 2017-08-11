@@ -8349,6 +8349,9 @@ qtdemux_parse_stsd (GstQTDemux * qtdemux, GNode * stsd,
     stream = g_new0 (QtDemuxStream, 1);
     /* first copy the common information */
     memcpy (stream, trackinfo, sizeof (QtDemuxStream));
+    /* now copy correctly the possible information */
+    if (trackinfo->pending_tags)
+      stream->pending_tags = gst_tag_list_copy (trackinfo->pending_tags);
     /* set the description index */
     stream->description_idx = i + 1;
 
@@ -8568,7 +8571,7 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
     goto corrupt_file;
 
   /* finally free the temporary stream */
-  g_free (stream);
+  gst_qtdemux_stream_free (qtdemux, stream);
 
   return TRUE;
 
