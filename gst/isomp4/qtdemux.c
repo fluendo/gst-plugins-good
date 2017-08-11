@@ -2138,15 +2138,37 @@ gst_qtdemux_stream_free (GstQTDemux * qtdemux, QtDemuxStream * stream)
     gst_buffer_unref (GST_BUFFER_CAST (stream->buffers->data));
     stream->buffers = g_slist_delete_link (stream->buffers, stream->buffers);
   }
-  if (stream->pad)
+
+  if (stream->pad) {
     gst_element_remove_pad (GST_ELEMENT_CAST (qtdemux), stream->pad);
-  g_free (stream->samples);
-  if (stream->caps)
+    stream->pad = NULL;
+  }
+
+  if (stream->samples) {
+    g_free (stream->samples);
+    stream->samples = NULL;
+  }
+
+  if (stream->caps) {
     gst_caps_unref (stream->caps);
-  g_free (stream->segments);
-  if (stream->pending_tags)
+    stream->caps = NULL;
+  }
+
+  if (stream->segments) {
+    g_free (stream->segments);
+    stream->segments = NULL;
+  }
+
+  if (stream->pending_tags) {
     gst_tag_list_free (stream->pending_tags);
-  g_free (stream->redirect_uri);
+    stream->pending_tags = NULL;
+  }
+
+  if (stream->redirect_uri) {
+    g_free (stream->redirect_uri);
+    stream->redirect_uri = NULL;
+  }
+
   if (stream->pending_events) {
     g_list_free_full (stream->pending_events, (GDestroyNotify) gst_event_unref);
     stream->pending_events = NULL;
