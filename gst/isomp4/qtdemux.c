@@ -2522,7 +2522,8 @@ static gboolean
 qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
     QtDemuxStream * stream, guint32 d_sample_duration, guint32 d_sample_size,
     guint32 d_sample_flags, gint64 moof_offset, gint64 moof_length,
-    gint64 * base_offset, gint64 * running_offset, gint64 base_decode_time)
+    gint64 * base_offset, gint64 * running_offset, gint64 base_decode_time,
+    gboolean has_tfdt)
 {
   guint64 timestamp;
   gint32 data_offset = 0;
@@ -2643,15 +2644,19 @@ qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
   if (stream->samples == NULL)
     goto out_of_memory;
 
-  if (G_UNLIKELY (stream->n_samples == 0)) {
-    /* the timestamp of the first sample is also provided by the tfra entry
-     * but we shouldn't rely on it as it is at the end of files */
+  if (has_tfdt) {
     timestamp = base_decode_time;
   } else {
-    /* subsequent fragments extend stream */
-    timestamp =
-        stream->samples[stream->n_samples - 1].timestamp +
-        stream->samples[stream->n_samples - 1].duration;
+    if (G_UNLIKELY (stream->n_samples == 0)) {
+      /* the timestamp of the first sample is also provided by the tfra entry
+       * but we shouldn't rely on it as it is at the end of files */
+      timestamp = 0;
+    } else {
+      /* subsequent fragments extend stream */
+      timestamp =
+          stream->samples[stream->n_samples - 1].timestamp +
+          stream->samples[stream->n_samples - 1].duration;
+    }
   }
   sample = stream->samples + stream->n_samples;
   for (i = 0; i < samples_count; i++) {
@@ -3029,7 +3034,7 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
     while (trun_node) {
       qtdemux_parse_trun (qtdemux, &trun_data, stream,
           ds_duration, ds_size, ds_flags, moof_offset, length, &base_offset,
-          &running_offset, decode_time);
+          &running_offset, decode_time, (tfdt_node != NULL));
       /* iterate all siblings */
       trun_node = qtdemux_tree_get_sibling_by_type_full (trun_node, FOURCC_trun,
           &trun_data);
