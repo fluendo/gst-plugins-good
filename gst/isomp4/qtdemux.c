@@ -6446,6 +6446,7 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
   GstTagList *list = NULL;
   gchar *codec = NULL;
   const guint8 *stsd_data;
+  const guint8 *stsd_entry_data;
   guint16 lang_code;            /* quicktime lang code or packed iso code */
   guint32 version;
   guint32 tkhd_flags = 0;
@@ -6593,6 +6594,7 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
   if (!(stsd = qtdemux_tree_get_child_by_type (stbl, FOURCC_stsd)))
     goto corrupt_file;
   stsd_data = (const guint8 *) stsd->data;
+  stsd_entry_data = stsd_data + 16;
 
   /* stsd should at least have one entry */
   len = QT_UINT32 (stsd_data);
@@ -7475,6 +7477,41 @@ qtdemux_parse_trak (GstQTDemux * qtdemux, GNode * trak)
           }
           break;
         }
+        case FOURCC_mp4a:
+        {
+          /* mp4a atom withtout ESDS; Attempt to build codec data from atom */
+          gint len = QT_UINT32 (stsd_entry_data);
+
+          if (len >= 34) {
+            guint16 sound_version = QT_UINT16 (stsd_entry_data + 16);
+
+            if (sound_version == 1) {
+              guint16 channels = QT_UINT16 (stsd_entry_data + 24);
+              guint32 time_scale = QT_UINT32 (stsd_entry_data + 30);
+              guint8 codec_data[2];
+              GstBuffer *buf;
+              gint profile = 2; /* FIXME: Can this be determined somehow?
+                                 * There doesn't seem to be anything in mp4a
+                                 * atom that specifis compression */
+
+              gint sample_rate_index =
+                   gst_codec_utils_aac_get_index_from_sample_rate (time_scale);
+
+              /* build AAC codec data */
+              codec_data[0] = profile << 3;
+              codec_data[0] |= ((sample_rate_index >> 1) & 0x7);
+              codec_data[1] = (sample_rate_index & 0x01) << 7;
+              codec_data[1] |= (channels & 0xF) << 3;
+
+              buf = gst_buffer_new_and_alloc (2);
+              memcpy(GST_BUFFER_DATA(buf),codec_data,2);
+              gst_caps_set_simple (stream->caps,
+                  "codec_data", GST_TYPE_BUFFER, buf, NULL);
+              gst_buffer_unref (buf);
+             }
+           }
+           break;
+         }
         default:
           break;
       }
