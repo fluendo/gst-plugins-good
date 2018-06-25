@@ -74,6 +74,11 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef HAVE_FLUC
+#include <fluc/drm/flucdrm_buffer.h>
+#include <fluc/drm/flucdrm_cenc.h>
+#endif
+
 #ifdef HAVE_ZLIB
 # include <zlib.h>
 #endif
@@ -355,8 +360,11 @@ struct _QtDemuxStream
   guint32 def_sample_flags;
   guint32 def_sample_description_idx;
 
+  /* Content Protection */
   gboolean encrypted;
-  guint32 senc_sample_index;
+#ifdef HAVE_FLUC
+  FlucDrmCencContext *cenc_context;
+#endif
 };
 
 enum QtDemuxState
@@ -369,10 +377,6 @@ enum QtDemuxState
 
 enum
 {
-  SIGNAL_CENC_TENC,
-  SIGNAL_CENC_SENC,
-  SIGNAL_PSSH,
-  SIGNAL_DECRYPT,
   SIGNAL_EMSG,
   LAST_SIGNAL
 };
@@ -690,81 +694,6 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
   gstelement_class->get_index = GST_DEBUG_FUNCPTR (gst_qtdemux_get_index);
 
   gst_tag_register_musicbrainz_tags ();
-
-  /**
-   * GstQTDemux::cenc-tenc:
-   * @demux: the demuxer instance
-   * @track_id: the track identifier
-   * @tenc: a #GstBuffer containing tenc node
-   *
-   * This signal gets emitted whenever a tenc atom is found to allow
-   * the initialization of an external decrypter.
-   *
-   * Since: 0.10.31
-   */
-  gst_qtdemux_signals[SIGNAL_CENC_TENC] =
-      g_signal_new ("cenc-tenc", G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, cenc_tenc),
-      NULL, NULL,
-      g_cclosure_marshal_VOID__UINT_BUFFER, G_TYPE_NONE, 2,
-      G_TYPE_UINT, GST_TYPE_BUFFER);
-
-  /**
-   * GstQTDemux::cenc-senc:
-   * @demux: the demuxer instance
-   * @track_id: the track identifier
-   * @senc: a #GstBuffer containing senc node
-   *
-   * This signal gets emitted whenever a senc atom is found to allow
-   * the initialization of an external decrypter.
-   *
-   * Since: 0.10.31
-   */
-  gst_qtdemux_signals[SIGNAL_CENC_SENC] =
-      g_signal_new ("cenc-senc", G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, cenc_senc),
-      NULL, NULL,
-      g_cclosure_marshal_VOID__UINT_BUFFER, G_TYPE_NONE, 2,
-      G_TYPE_UINT, GST_TYPE_BUFFER);
-
-  /**
-   * GstQTDemux::pssh:
-   * @demux: the demuxer instance
-   * @pssh: a #GstBuffer containing senc node
-   *
-   * This signal gets emitted whenever a pssh atom is found to allow
-   * the initialization of an external decrypter that implements the
-   * Protected Interoperable File Format (PIFF) specification.
-   *
-   * Since: 0.10.31
-   */
-  gst_qtdemux_signals[SIGNAL_PSSH] =
-      g_signal_new ("pssh", G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, pssh),
-      NULL, NULL,
-      g_cclosure_marshal_VOID__BUFFER, G_TYPE_NONE, 1, GST_TYPE_BUFFER);
-
-  /**
-   * GstQTDemux::decrypt:
-   * @demux: the demuxer instance
-   * @track_id: the track identifier
-   * @buffer: a #GstBuffer that has to be decrypted
-   * @sample_index: the sample index that might be needed for decrypt algorithm
-   *
-   * Returns: a #GstBuffer with data decrypted.
-   *
-   * This signal gets emitted whenever an encrypted buffer is available to allow
-   * the implemention of an external decrypter to return a new buffer with
-   * content decrypted.
-   *
-   * Since: 0.10.31
-   */
-  gst_qtdemux_signals[SIGNAL_DECRYPT] =
-      g_signal_new ("decrypt", G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, decrypt),
-      NULL, NULL,
-      g_cclosure_marshal_BUFFER__UINT_BUFFER_UINT, GST_TYPE_BUFFER, 3,
-      G_TYPE_UINT, GST_TYPE_BUFFER, G_TYPE_UINT);
 
   gst_qtdemux_signals[SIGNAL_EMSG] =
       g_signal_new ("emsg", G_TYPE_FROM_CLASS (klass),
@@ -2169,6 +2098,14 @@ gst_qtdemux_stream_free (GstQTDemux * qtdemux, QtDemuxStream * stream)
     stream->redirect_uri = NULL;
   }
 
+  /* free cenc context */
+#ifdef HAVE_FLUC
+  if (stream->cenc_context) {
+    fluc_drm_cenc_context_free (stream->cenc_context);
+    stream->cenc_context = NULL;
+  }
+#endif
+
   if (stream->pending_events) {
     g_list_free_full (stream->pending_events, (GDestroyNotify) gst_event_unref);
     stream->pending_events = NULL;
@@ -2213,25 +2150,6 @@ gst_qtdemux_change_state (GstElement * element, GstStateChange transition)
 {
   GstQTDemux *qtdemux = GST_QTDEMUX (element);
   GstStateChangeReturn result = GST_STATE_CHANGE_FAILURE;
-
-  switch (transition) {
-    case GST_STATE_CHANGE_READY_TO_PAUSED:
-      /* When decrypt signal is connected we support demuxing DRM */
-      if (g_signal_handler_find (qtdemux, G_SIGNAL_MATCH_ID,
-              gst_qtdemux_signals[SIGNAL_DECRYPT], 0, NULL, NULL, NULL)) {
-        qtdemux->supports_drm = TRUE;
-        GST_INFO_OBJECT (qtdemux, "Support for DRM is enabled");
-      } else {
-        qtdemux->supports_drm = FALSE;
-      }
-      break;
-
-    case GST_STATE_CHANGE_PAUSED_TO_READY:
-      break;
-    default:
-      break;
-  }
-
   result = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
 
   switch (transition) {
@@ -3001,10 +2919,9 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
     }
 
 
-    /* On encrypted streams emit a signal with the senc node */
+    /* On encrypted streams use flu-codec-sdk to parse cenc node */
     if (stream->encrypted) {
       GNode *node;
-      GstBuffer *buf = NULL;
 
       /* check if the brand has piff, if so, find the uuid */
       if (qtdemux_is_brand_piff (qtdemux, FALSE)) {
@@ -3013,16 +2930,15 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
         node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
       }
 
-      if (node) {
-        buf = gst_buffer_new ();
-        GST_BUFFER_DATA (buf) = node->data;
-        GST_BUFFER_SIZE (buf) = GST_READ_UINT32_BE (node->data);
-        g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_CENC_SENC], 0,
-            stream->track_id, buf);
-        gst_buffer_unref (buf);
+#ifdef HAVE_FLUC
+      if (node && !fluc_drm_cenc_parse_senc (stream->cenc_context, node->data)) {
+        goto cenc_parse_error;
       }
-
-      stream->senc_sample_index = 0;
+#else
+      GST_ERROR_OBJECT (qtdemux, "Cannot parse cenc if plugin is not built "
+          "with flu-codec-sdk");
+      goto cenc_parse_error;
+#endif
     }
 
     if (G_UNLIKELY (base_offset < -1))
@@ -3050,6 +2966,11 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
   g_node_destroy (moof_node);
   return TRUE;
 
+cenc_parse_error:
+  {
+    GST_DEBUG_OBJECT (qtdemux, "failed to parse senc");
+    goto fail;
+  }
 missing_tfhd:
   {
     GST_DEBUG_OBJECT (qtdemux, "missing tfhd box");
@@ -4191,22 +4112,11 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
 {
   GstFlowReturn ret = GST_FLOW_OK;
 
+#ifdef HAVE_FLUC
   if (G_UNLIKELY (stream->encrypted)) {
-    GstBuffer *dec_buf = NULL;
-
-    GST_DEBUG_OBJECT (qtdemux, "decrypting stream index = %d track index %d",
-        stream->senc_sample_index, stream->track_id);
-    /* send the decrypt signal */
-    g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_DECRYPT], 0,
-        stream->track_id, buf, stream->senc_sample_index++, &dec_buf);
-
-    gst_buffer_unref (buf);
-    if (dec_buf) {
-      buf = dec_buf;
-    } else {
-      goto exit;
-    }
+    buf = fluc_drm_buffer_new_from_cenc (buf, stream->cenc_context);
   }
+#endif
 
   if (G_UNLIKELY (stream->fourcc == FOURCC_rtsp)) {
     gchar *url;
@@ -5209,16 +5119,15 @@ qtdemux_parse_moov (GstQTDemux * qtdemux, const guint8 * buffer, guint length)
   qtdemux_parse_node (qtdemux, qtdemux->moov_node, buffer, length);
 
   pssh = qtdemux_tree_get_child_by_type (qtdemux->moov_node, FOURCC_pssh);
+#ifdef HAVE_FLUC
   if (pssh) {
-    GstBuffer *buf;
-
-    /* for the pssh, just send the buffer completely */
-    buf = gst_buffer_new ();
-    GST_BUFFER_DATA (buf) = pssh->data;
-    GST_BUFFER_SIZE (buf) = GST_READ_UINT32_BE (pssh->data);
-    g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_PSSH], 0, buf);
-    gst_buffer_unref (buf);
+    GstEvent *event = fluc_drm_event_new_pssh (pssh->data, "isobmff/moov");
+    if (event)
+      gst_qtdemux_push_or_queue_event (qtdemux, event);
+    else
+      GST_ERROR_OBJECT (qtdemux, "could not create DRM event");
   }
+#endif
 
   cmov = qtdemux_tree_get_child_by_type (qtdemux->moov_node, FOURCC_cmov);
   if (cmov) {
@@ -5873,7 +5782,15 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
     gst_pad_set_query_function (stream->pad, gst_qtdemux_handle_src_query);
 
     GST_DEBUG_OBJECT (qtdemux, "setting caps %" GST_PTR_FORMAT, stream->caps);
+
+#if HAVE_FLUC
+    if (stream->encrypted)
+      fluc_drm_cenc_pad_set_caps (stream->cenc_context, stream->pad);
+    else
+      gst_pad_set_caps (stream->pad, stream->caps);
+#else
     gst_pad_set_caps (stream->pad, stream->caps);
+#endif
 
     GST_DEBUG_OBJECT (qtdemux, "adding pad %s %p to qtdemux %p",
         GST_OBJECT_NAME (stream->pad), stream->pad, qtdemux);
@@ -7041,15 +6958,11 @@ qtdemux_parse_cenc (GstQTDemux * qtdemux, QtDemuxStream * stream,
     GST_WARNING_OBJECT (qtdemux, "No tenc found");
     return FALSE;
   }
-
-  buf = gst_buffer_new ();
-  GST_BUFFER_DATA (buf) = tenc->data;
-  GST_BUFFER_SIZE (buf) = GST_READ_UINT32_BE (tenc->data);
-  g_signal_emit (qtdemux, gst_qtdemux_signals[SIGNAL_CENC_TENC], 0,
-      stream->track_id, buf);
-  gst_buffer_unref (buf);
-
+#ifdef HAVE_FLUC
+  return fluc_drm_cenc_parse_tenc (stream->cenc_context, tenc->data);
+#else
   return TRUE;
+#endif
 }
 
 static void
@@ -7182,9 +7095,6 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
   /* get the real fourcc */
   if ((fourcc == FOURCC_encv) || (fourcc == FOURCC_enca)) {
     GNode *encx;
-
-    if (!qtdemux->supports_drm)
-      goto error_encrypted;
 
     encx = fourcc_node;
     if (!encx)
@@ -8394,6 +8304,10 @@ qtdemux_parse_stsd (GstQTDemux * qtdemux, GNode * stsd,
       stream->pending_tags = gst_tag_list_copy (trackinfo->pending_tags);
     /* set the description index */
     stream->description_idx = i + 1;
+#ifdef HAVE_FLUC
+    /* Create the cenc context */
+    stream->cenc_context = fluc_drm_cenc_context_new ();
+#endif
 
     if (!qtdemux_parse_stsd_entry (qtdemux, stsd_data, entry_len, fourcc_node,
             fourcc, stream)) {
