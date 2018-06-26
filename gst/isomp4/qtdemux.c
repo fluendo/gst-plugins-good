@@ -5781,7 +5781,15 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
     gst_pad_set_query_function (stream->pad, gst_qtdemux_handle_src_query);
 
     GST_DEBUG_OBJECT (qtdemux, "setting caps %" GST_PTR_FORMAT, stream->caps);
+
+#if HAVE_FLUC
+    if (stream->encrypted)
+      fluc_drm_cenc_pad_set_caps (stream->cenc_context, stream->pad);
+    else
+      gst_pad_set_caps (stream->pad, stream->caps);
+#else
     gst_pad_set_caps (stream->pad, stream->caps);
+#endif
 
     GST_DEBUG_OBJECT (qtdemux, "adding pad %s %p to qtdemux %p",
         GST_OBJECT_NAME (stream->pad), stream->pad, qtdemux);
