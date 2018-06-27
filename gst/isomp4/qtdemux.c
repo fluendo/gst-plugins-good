@@ -4100,6 +4100,19 @@ gst_qtdemux_process_buffer (GstQTDemux * qtdemux, QtDemuxStream * stream,
   return buf;
 }
 
+
+static gboolean
+flu_decorate_and_push_buffer (QtDemuxStream * stream, GstBuffer * buf)
+{
+#ifdef HAVE_FLUC
+  if (G_UNLIKELY (stream->encrypted)) {
+    buf = fluc_drm_buffer_new_from_cenc (buf, stream->cenc_context);
+  }
+#endif
+  return gst_pad_push (stream->pad, buf);
+}
+
+
 /* Sets a buffer's attributes properly and pushes it downstream.
  * Also checks for additional actions and custom processing that may
  * need to be done first.
@@ -4111,12 +4124,6 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
     guint64 byte_position)
 {
   GstFlowReturn ret = GST_FLOW_OK;
-
-#ifdef HAVE_FLUC
-  if (G_UNLIKELY (stream->encrypted)) {
-    buf = fluc_drm_buffer_new_from_cenc (buf, stream->cenc_context);
-  }
-#endif
 
   if (G_UNLIKELY (stream->fourcc == FOURCC_rtsp)) {
     gchar *url;
@@ -4158,10 +4165,9 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
       stream->discont = FALSE;
     }
 
-    if (G_LIKELY(!stream->encrypted))
-      gst_buffer_set_caps (buffer, stream->caps);
+    gst_buffer_set_caps (buffer, stream->caps);
 
-    gst_pad_push (stream->pad, buffer);
+    flu_decorate_and_push_buffer (stream, buffer);
 
     stream->buffers = g_slist_delete_link (stream->buffers, stream->buffers);
   }
@@ -4215,15 +4221,14 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
   if (!keyframe)
     GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_DELTA_UNIT);
 
-  if (G_LIKELY(!stream->encrypted))
-    gst_buffer_set_caps (buf, stream->caps);
+  gst_buffer_set_caps (buf, stream->caps);
 
   GST_LOG_OBJECT (qtdemux,
       "Pushing buffer with time %" GST_TIME_FORMAT ", duration %"
       GST_TIME_FORMAT " on pad %s", GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buf)),
       GST_TIME_ARGS (GST_BUFFER_DURATION (buf)), GST_PAD_NAME (stream->pad));
 
-  ret = gst_pad_push (stream->pad, buf);
+  ret = flu_decorate_and_push_buffer (stream, buf);
 
 exit:
   return ret;
