@@ -4157,7 +4157,9 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
       GST_BUFFER_FLAG_SET (buffer, GST_BUFFER_FLAG_DISCONT);
       stream->discont = FALSE;
     }
-    gst_buffer_set_caps (buffer, stream->caps);
+
+    if (G_LIKELY(!stream->encrypted))
+      gst_buffer_set_caps (buffer, stream->caps);
 
     gst_pad_push (stream->pad, buffer);
 
@@ -4213,7 +4215,8 @@ gst_qtdemux_decorate_and_push_buffer (GstQTDemux * qtdemux,
   if (!keyframe)
     GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_DELTA_UNIT);
 
-  gst_buffer_set_caps (buf, stream->caps);
+  if (G_LIKELY(!stream->encrypted))
+    gst_buffer_set_caps (buf, stream->caps);
 
   GST_LOG_OBJECT (qtdemux,
       "Pushing buffer with time %" GST_TIME_FORMAT ", duration %"
