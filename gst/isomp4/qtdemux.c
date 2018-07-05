@@ -4107,6 +4107,7 @@ flu_decorate_and_push_buffer (QtDemuxStream * stream, GstBuffer * buf)
 #ifdef HAVE_FLUC
   if (G_UNLIKELY (stream->encrypted)) {
     buf = fluc_drm_buffer_new_from_cenc (buf, stream->cenc_context);
+    fluc_drm_cenc_pad_set_caps (stream->cenc_context, stream->pad);
   }
 #endif
   return gst_pad_push (stream->pad, buf);
