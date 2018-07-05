@@ -4107,7 +4107,6 @@ flu_decorate_and_push_buffer (QtDemuxStream * stream, GstBuffer * buf)
 #ifdef HAVE_FLUC
   if (G_UNLIKELY (stream->encrypted)) {
     buf = fluc_drm_buffer_new_from_cenc (buf, stream->cenc_context);
-    fluc_drm_cenc_pad_set_caps (stream->cenc_context, stream->pad);
   }
 #endif
   return gst_pad_push (stream->pad, buf);
@@ -5793,8 +5792,12 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
     GST_DEBUG_OBJECT (qtdemux, "setting caps %" GST_PTR_FORMAT, stream->caps);
 
 #if HAVE_FLUC
-    if (stream->encrypted)
+    if (stream->encrypted) {
+      /* Cenc context will always set this caps to drm buffers also */
+      if (!fluc_drm_cenc_context_set_outcaps (stream->cenc_context, stream->caps))
+        return FALSE;
       fluc_drm_cenc_pad_set_caps (stream->cenc_context, stream->pad);
+    }
     else
       gst_pad_set_caps (stream->pad, stream->caps);
 #else
