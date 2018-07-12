@@ -5791,7 +5791,7 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
 
     GST_DEBUG_OBJECT (qtdemux, "setting caps %" GST_PTR_FORMAT, stream->caps);
 
-#if HAVE_FLUC
+#ifdef HAVE_FLUC
     if (stream->encrypted) {
       /* Cenc context will always set this caps to drm buffers also */
       if (!fluc_drm_cenc_context_set_outcaps (stream->cenc_context, stream->caps))
