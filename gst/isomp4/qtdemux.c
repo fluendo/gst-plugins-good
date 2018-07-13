@@ -75,8 +75,7 @@
 #include <math.h>
 
 #ifdef HAVE_FLUC
-#include <fluc/drm/flucdrm_buffer.h>
-#include <fluc/drm/flucdrm_cenc.h>
+#include <fluc/fluc.h>
 #endif
 
 #ifdef HAVE_ZLIB
