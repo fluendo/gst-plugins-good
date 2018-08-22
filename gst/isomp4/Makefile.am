@@ -1,7 +1,9 @@
 
 plugin_LTLIBRARIES = libgstisomp4.la
 
-libgstisomp4_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_CFLAGS)
+libgstisomp4_la_CFLAGS = $(ERROR_CFLAGS) $(GST_PLUGINS_BASE_CFLAGS) \
+    $(GST_BASE_CFLAGS) $(GST_CFLAGS)
+
 if WITH_DRM
 libgstisomp4_la_CFLAGS += $(FLUC_CFLAGS) -DHAVE_FLUC
 endif

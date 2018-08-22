@@ -49,7 +49,9 @@
 
 /* FIXME 0.11: suppress warnings for deprecated API such as GStaticRecMutex
  * with newer GLib versions (>= 2.31.0) */
+#ifndef GLIB_DISABLE_DEPRECATION_WARNINGS
 #define GLIB_DISABLE_DEPRECATION_WARNINGS
+#endif
 
 #include "gst/gst-i18n-plugin.h"
 
@@ -460,6 +462,7 @@ static gboolean qtdemux_parse_samples (GstQTDemux * qtdemux,
     QtDemuxStream * stream, guint32 n);
 static GstFlowReturn qtdemux_expose_streams (GstQTDemux * qtdemux);
 
+#if 0
 static void
 g_cclosure_marshal_BUFFER__UINT_BUFFER_UINT (GClosure * closure,
     GValue * return_value,
@@ -556,6 +559,7 @@ g_cclosure_marshal_VOID__BUFFER (GClosure * closure,
 
   callback (data1, g_value_peek_pointer (param_values + 1), data2);
 }
+#endif
 
 static void
 qtdemux_parse_matrix (QtDemuxMatrix * matrix, const guint8 * data)
@@ -2920,6 +2924,7 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
 
     /* On encrypted streams use flu-codec-sdk to parse cenc node */
     if (stream->encrypted) {
+#ifdef HAVE_FLUC
       GNode *node;
 
       /* check if the brand has piff, if so, find the uuid */
@@ -2929,7 +2934,6 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
         node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
       }
 
-#ifdef HAVE_FLUC
       if (node && !fluc_drm_cenc_parse_senc (stream->cenc_context, node->data)) {
         goto cenc_parse_error;
       }
@@ -5117,8 +5121,6 @@ static gboolean
 qtdemux_parse_moov (GstQTDemux * qtdemux, const guint8 * buffer, guint length)
 {
   GNode *cmov;
-  GNode *pssh;
-
   qtdemux->moov_node = g_node_new ((guint8 *) buffer);
 
   /* counts as header data */
@@ -5127,14 +5129,17 @@ qtdemux_parse_moov (GstQTDemux * qtdemux, const guint8 * buffer, guint length)
   GST_DEBUG_OBJECT (qtdemux, "parsing 'moov' atom");
   qtdemux_parse_node (qtdemux, qtdemux->moov_node, buffer, length);
 
-  pssh = qtdemux_tree_get_child_by_type (qtdemux->moov_node, FOURCC_pssh);
 #ifdef HAVE_FLUC
-  if (pssh) {
-    GstEvent *event = fluc_drm_event_new_pssh (pssh->data, "isobmff/moov");
-    if (event)
-      gst_qtdemux_push_or_queue_event (qtdemux, event);
-    else
-      GST_ERROR_OBJECT (qtdemux, "could not create DRM event");
+  {
+    GNode *pssh =
+        qtdemux_tree_get_child_by_type (qtdemux->moov_node, FOURCC_pssh);
+    if (pssh) {
+      GstEvent *event = fluc_drm_event_new_pssh (pssh->data, "isobmff/moov");
+      if (event)
+        gst_qtdemux_push_or_queue_event (qtdemux, event);
+      else
+        GST_ERROR_OBJECT (qtdemux, "could not create DRM event");
+    }
   }
 #endif
 
@@ -6958,8 +6963,6 @@ qtdemux_parse_cenc (GstQTDemux * qtdemux, QtDemuxStream * stream,
     guint32 scheme_version, GNode * schi)
 {
   GNode *tenc;
-  GstBuffer *buf;
-
   /* For piff based brands, the scheme version is 0x00010001 */
   if ((scheme_version != 0x00010000) && (scheme_version != 0x00010001)) {
     GST_WARNING_OBJECT (qtdemux, "Wrong version number %08x", scheme_version);
