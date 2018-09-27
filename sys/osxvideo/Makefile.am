@@ -13,7 +13,7 @@ libgstosxvideosink_la_LIBADD =  \
 	-lgstvideo-$(GST_MAJORMINOR) \
 	-lgstinterfaces-$(GST_MAJORMINOR)
 
-libgstosxvideosink_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -Wl,-framework -Wl,Cocoa -Wl,-framework -Wl,QuickTime -Wl,-framework -Wl,OpenGL
+libgstosxvideosink_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -Wl,-framework -Wl,Cocoa -Wl,-framework -Wl,OpenGL
 if !GST_PLUGIN_BUILD_STATIC
 libgstosxvideosink_la_LIBTOOLFLAGS = --tag=disable-static --tag=CC
 endif
