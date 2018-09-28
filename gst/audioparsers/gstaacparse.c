@@ -124,8 +124,7 @@ gst_aac_parse_base_init (gpointer klass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  gst_element_class_add_static_pad_template (element_class,
-      &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &sink_template);
   gst_element_class_add_static_pad_template (element_class, &src_template);
 
   gst_element_class_set_details_simple (element_class,
@@ -672,7 +671,7 @@ gst_aac_parse_check_loas_frame (GstAacParse * aacparse,
 
 /* caller ensure sufficient data */
 static inline void
-gst_aac_parse_parse_adts_header (GstAacParse * aacparse, const guint8 * data,
+gst_aac_parse_parse_adts_header (const guint8 * data,
     gint * rate, gint * channels, gint * object, gint * version)
 {
 
@@ -758,7 +757,7 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
 
     GST_INFO ("ADTS ID: %d, framesize: %d", (data[1] & 0x08) >> 3, *framesize);
 
-    gst_aac_parse_parse_adts_header (aacparse, data, &rate, &channels,
+    gst_aac_parse_parse_adts_header (data, &rate, &channels,
         &aacparse->object_type, &aacparse->mpegversion);
 
     if (!channels || !framesize) {
@@ -1013,7 +1012,7 @@ gst_aac_parse_parse_frame (GstBaseParse * parse, GstBaseParseFrame * frame)
     /* see above */
     frame->overhead = 7;
 
-    gst_aac_parse_parse_adts_header (aacparse, GST_BUFFER_DATA (buffer),
+    gst_aac_parse_parse_adts_header (GST_BUFFER_DATA (buffer),
         &rate, &channels, NULL, NULL);
     GST_LOG_OBJECT (aacparse, "rate: %d, chans: %d", rate, channels);
 
