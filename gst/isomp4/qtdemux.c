@@ -5641,6 +5641,9 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
   gst_segment_set_newsegment (&stream->segment, FALSE, 1.0, GST_FORMAT_TIME,
       0, GST_CLOCK_TIME_NONE, 0);
 
+  gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
+      "av-pid", stream->track_id, NULL);
+
   if (stream->subtype == FOURCC_vide) {
     gchar *name = g_strdup_printf ("video_%02d_%02d", stream->track_id,
         stream->description_idx);

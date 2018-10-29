@@ -55,6 +55,9 @@ plugin_init (GstPlugin * plugin)
       G_TYPE_STRING, "AVComponent encoding", "OIPF 8.4.2 AVComponent encoding",
       NULL);
 
+  gst_tag_register ("av-pid", GST_TAG_FLAG_META,
+      G_TYPE_UINT, "av pid", "OIPF 8.4.2 AVComponent pid", NULL);
+
   if (!gst_element_register (plugin, "qtdemux",
           GST_RANK_PRIMARY, GST_TYPE_QTDEMUX))
     return FALSE;
