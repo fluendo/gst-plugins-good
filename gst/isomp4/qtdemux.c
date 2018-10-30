@@ -232,6 +232,8 @@ struct _QtDemuxStream
   /* language */
   gchar lang_id[4];             /* ISO 639-2T language code */
 
+  const gchar *avcomp_enc;      /* OIPF 8.4.2 AVComponent->encoding */
+
   /* our samples */
   guint32 n_samples;
   QtDemuxSample *samples;
@@ -5639,6 +5641,9 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
   gst_segment_set_newsegment (&stream->segment, FALSE, 1.0, GST_FORMAT_TIME,
       0, GST_CLOCK_TIME_NONE, 0);
 
+  gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
+      FLU_SDK_TAG_AV_PID, stream->track_id, NULL);
+
   if (stream->subtype == FOURCC_vide) {
     gchar *name = g_strdup_printf ("video_%02d_%02d", stream->track_id,
         stream->description_idx);
@@ -7176,6 +7181,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     } else {
       switch (stream->fourcc) {
         case FOURCC_avc1:
+          stream->avcomp_enc = "video/mp4";
         case FOURCC_avc3:
         {
           gint len = QT_UINT32 (stsd_data) - 0x56;
@@ -8050,6 +8056,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
       || stream->subtype == FOURCC_subt) {
 
     stream->sampled = TRUE;
+    stream->avcomp_enc = "3GPP-TT";
 
     offset = 0;
 
@@ -8130,6 +8137,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     stream->rate = 16000;
   } else if (stream->fourcc == FOURCC_mp4a) {
     stream->sampled = TRUE;
+    stream->avcomp_enc = "audio/mp4";
   }
 
   stbl = qtdemux_tree_get_parent_by_type (fourcc_node, FOURCC_stbl);
@@ -10142,9 +10150,14 @@ gst_qtdemux_handle_esds (GstQTDemux * qtdemux, QtDemuxStream * stream,
     stream->caps = caps;
   }
 
-  if (codec_name && list)
+  if (codec_name && list) {
     gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
         GST_TAG_AUDIO_CODEC, codec_name, NULL);
+
+    if (stream->avcomp_enc)
+      gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
+          FLU_SDK_TAG_AV_ENCODING, stream->avcomp_enc, NULL);
+  }
 
   /* Add the codec_data attribute to caps, if we have it */
   if (data_ptr) {
