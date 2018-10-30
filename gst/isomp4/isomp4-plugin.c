@@ -51,11 +51,11 @@ plugin_init (GstPlugin * plugin)
       G_TYPE_STRING, GST_QT_DEMUX_CLASSIFICATION_TAG, "content classification",
       gst_tag_merge_use_first);
 
-  gst_tag_register ("av-encoding", GST_TAG_FLAG_META,
+  gst_tag_register (FLU_SDK_TAG_AV_ENCODING, GST_TAG_FLAG_META,
       G_TYPE_STRING, "AVComponent encoding", "OIPF 8.4.2 AVComponent encoding",
       NULL);
 
-  gst_tag_register ("av-pid", GST_TAG_FLAG_META,
+  gst_tag_register (FLU_SDK_TAG_AV_PID, GST_TAG_FLAG_META,
       G_TYPE_UINT, "av pid", "OIPF 8.4.2 AVComponent pid", NULL);
 
   if (!gst_element_register (plugin, "qtdemux",
