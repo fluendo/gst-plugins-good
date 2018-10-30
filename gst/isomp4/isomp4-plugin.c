@@ -51,7 +51,7 @@ plugin_init (GstPlugin * plugin)
       G_TYPE_STRING, GST_QT_DEMUX_CLASSIFICATION_TAG, "content classification",
       gst_tag_merge_use_first);
 
-  gst_tag_register ("AVComponent-encoding", GST_TAG_FLAG_META,
+  gst_tag_register ("av-encoding", GST_TAG_FLAG_META,
       G_TYPE_STRING, "AVComponent encoding", "OIPF 8.4.2 AVComponent encoding",
       NULL);
 
