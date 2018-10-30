@@ -10156,7 +10156,7 @@ gst_qtdemux_handle_esds (GstQTDemux * qtdemux, QtDemuxStream * stream,
 
     if (stream->avcomp_enc)
       gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
-          "AVComponent-encoding", stream->avcomp_enc, NULL);
+          "av-encoding", stream->avcomp_enc, NULL);
   }
 
   /* Add the codec_data attribute to caps, if we have it */
