@@ -5642,7 +5642,7 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
       0, GST_CLOCK_TIME_NONE, 0);
 
   gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
-      "av-pid", stream->track_id, NULL);
+      FLU_SDK_TAG_AV_PID, stream->track_id, NULL);
 
   if (stream->subtype == FOURCC_vide) {
     gchar *name = g_strdup_printf ("video_%02d_%02d", stream->track_id,
@@ -10156,7 +10156,7 @@ gst_qtdemux_handle_esds (GstQTDemux * qtdemux, QtDemuxStream * stream,
 
     if (stream->avcomp_enc)
       gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
-          "av-encoding", stream->avcomp_enc, NULL);
+          FLU_SDK_TAG_AV_ENCODING, stream->avcomp_enc, NULL);
   }
 
   /* Add the codec_data attribute to caps, if we have it */
