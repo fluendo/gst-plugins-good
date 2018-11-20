@@ -8589,6 +8589,14 @@ gst_qtdemux_guess_bitrate (GstQTDemux * qtdemux)
     return;
   }
 
+  /* Check that the size is valid */
+  if (size < 0) {
+    GST_DEBUG_OBJECT (qtdemux,
+        "Size in bytes of the stream not known (%" G_GINT64_FORMAT
+        ") - bailing", size);
+    return;
+  }
+
   /* Subtract the header size */
   GST_DEBUG_OBJECT (qtdemux, "Total size %" G_GINT64_FORMAT ", header size %u",
       size, qtdemux->header_size);
