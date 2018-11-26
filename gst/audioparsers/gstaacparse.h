@@ -79,7 +79,10 @@ struct _GstAacParse {
   gint           mpegversion;
   gint           frame_samples;
 
-  guchar         codec_data[2];
+  GstBuffer      *codec_data;
+  gboolean       have_pce;
+  gint           pce_sample_rate;
+  gint           pce_channels;
 
   GstAacHeaderType header_type;
 };
