@@ -49,6 +49,8 @@ struct _GstSoupHTTPSrc {
   GstPushSrc element;
 
   gchar *location;             /* Full URI. */
+  gchar *redirection_uri;      /* Full URI after redirections. */
+  gboolean redirection_permanent; /* Permanent or temporary redirect? */
   gchar *user_agent;           /* User-Agent HTTP header. */
   gboolean automatic_redirect; /* Follow redirects. */
   SoupURI *proxy;              /* HTTP proxy URI. */
