@@ -2655,7 +2655,7 @@ index_too_big:
 
 /* find stream with @id and description index @idx */
 static inline QtDemuxStream *
-qtdemux_find_stream (GstQTDemux * qtdemux, guint32 id)
+qtdemux_find_stream (GstQTDemux * qtdemux, guint32 id, guint32 idx)
 {
   QtDemuxStream *stream;
   gint i;
@@ -2669,19 +2669,20 @@ qtdemux_find_stream (GstQTDemux * qtdemux, guint32 id)
   /* try to get it fast and simple */
   if (G_LIKELY (id <= qtdemux->n_streams)) {
     stream = qtdemux->streams[id - 1];
-    if (G_LIKELY (stream->track_id == id))
+    if (G_LIKELY ((stream->track_id == id) && (stream->description_idx == idx)))
       return stream;
   }
 
   /* linear search otherwise */
   for (i = 0; i < qtdemux->n_streams; i++) {
     stream = qtdemux->streams[i];
-    if (stream->track_id == id)
+    if ((stream->track_id == id) && (stream->description_idx == idx))
       return stream;
   }
 
-  GST_ERROR_OBJECT (qtdemux, "Impossible to find the stream for track id %d",
-      id);
+  GST_ERROR_OBJECT (qtdemux,
+      "Impossible to find the stream for track id %d and description idx %d",
+      id, idx);
 
   return NULL;
 }
@@ -2806,7 +2807,8 @@ qtdemux_parse_tfhd (GstQTDemux * qtdemux, GstByteReader * tfhd,
       *base_offset = -1;
   }
 
-  *stream = qtdemux_find_stream (qtdemux, track_id);
+  *stream = qtdemux_find_stream (qtdemux, track_id,
+      *default_sample_description_idx);
   if (G_UNLIKELY (!*stream))
     goto unknown_stream;
 
