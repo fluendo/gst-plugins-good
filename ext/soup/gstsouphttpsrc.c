@@ -827,7 +827,8 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
     if (!src->have_size || (src->content_size != newsize)) {
       src->content_size = newsize;
       src->have_size = TRUE;
-      src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
+      if (src->seekable == GST_SOUP_HTTP_SRC_SEEKABLE_UNKNOWN)
+        src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
       GST_DEBUG_OBJECT (src, "size = %" G_GUINT64_FORMAT, src->content_size);
 
       basesrc = GST_BASE_SRC_CAST (src);
