@@ -790,6 +790,13 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
   if (msg->status_code == 407 && src->proxy_id && src->proxy_pw)
     return;
 
+  if (soup_message_headers_header_equals (msg->response_headers,
+          "Accept-Ranges", "none")) {
+    GST_DEBUG_OBJECT (src,
+        "Server doesn't support ranges => Source is not seekable");
+    src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_FALSE;
+  }
+
   http_headers = gst_structure_new ("http-headers", NULL);
   gst_structure_set (http_headers, "uri", G_TYPE_STRING, src->location,
       "http-status-code", G_TYPE_UINT, msg->status_code, NULL);
@@ -820,7 +827,8 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
     if (!src->have_size || (src->content_size != newsize)) {
       src->content_size = newsize;
       src->have_size = TRUE;
-      src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
+      if (src->seekable == GST_SOUP_HTTP_SRC_SEEKABLE_UNKNOWN)
+        src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
       GST_DEBUG_OBJECT (src, "size = %" G_GUINT64_FORMAT, src->content_size);
 
       basesrc = GST_BASE_SRC_CAST (src);
