@@ -700,6 +700,13 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
 
   gst_tag_register_musicbrainz_tags ();
 
+  gst_tag_register (FLU_SDK_TAG_AV_ENCODING, GST_TAG_FLAG_META,
+      G_TYPE_STRING, "AVComponent encoding", "OIPF 8.4.2 AVComponent encoding",
+      NULL);
+
+  gst_tag_register (FLU_SDK_TAG_AV_PID, GST_TAG_FLAG_META,
+      G_TYPE_UINT, "av pid", "OIPF 8.4.2 AVComponent pid", NULL);
+
   gst_qtdemux_signals[SIGNAL_EMSG] =
       g_signal_new ("emsg", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstQTDemuxClass, emsg),
