@@ -134,7 +134,7 @@ struct _GstQTDemuxClass
 
 GType gst_qtdemux_get_type (void);
 
-#define FLU_SDK_TAG_AV_PID "av-pid"
-#define FLU_SDK_TAG_AV_ENCODING "av-encoding"
+#define AVCOMPONENT_TAG_PID "av-pid"
+#define AVCOMPONENT_TAG_ENCODING "av-encoding"
 G_END_DECLS
 #endif /* __GST_QTDEMUX_H__ */
