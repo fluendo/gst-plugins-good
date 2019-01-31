@@ -126,6 +126,7 @@ enum
 
 #define DEFAULT_USER_AGENT           "GStreamer souphttpsrc "
 #define DEFAULT_KEEP_ALIVE           FALSE
+#define DEFAULT_TIMEOUT              30
 
 static void gst_soup_http_src_uri_handler_init (gpointer g_iface,
     gpointer iface_data);
@@ -273,7 +274,7 @@ gst_soup_http_src_class_init (GstSoupHTTPSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_TIMEOUT,
       g_param_spec_uint ("timeout", "timeout",
           "Value in seconds to timeout a blocking I/O (0 = No timeout).", 0,
-          3600, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          3600, DEFAULT_TIMEOUT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_EXTRA_HEADERS,
       g_param_spec_boxed ("extra-headers", "Extra Headers",
           "Extra headers to append to the HTTP request",
@@ -368,6 +369,7 @@ gst_soup_http_src_init (GstSoupHTTPSrc * src, GstSoupHTTPSrcClass * g_class)
   src->context = NULL;
   src->session = NULL;
   src->msg = NULL;
+  src->timeout = DEFAULT_TIMEOUT;
   proxy = g_getenv ("http_proxy");
   if (proxy && !gst_soup_http_src_set_proxy (src, proxy)) {
     GST_WARNING_OBJECT (src,
@@ -491,6 +493,7 @@ gst_soup_http_src_set_property (GObject * object, guint prop_id,
       break;
     case PROP_TIMEOUT:
       src->timeout = g_value_get_uint (value);
+      GST_DEBUG_OBJECT (src, "timeout=%d", src->timeout);
       break;
     case PROP_KEEP_ALIVE:
       src->keep_alive = g_value_get_boolean (value);
@@ -1338,7 +1341,7 @@ gst_soup_http_src_start (GstBaseSrc * bsrc)
 {
   GstSoupHTTPSrc *src = GST_SOUP_HTTP_SRC (bsrc);
 
-  GST_DEBUG_OBJECT (src, "start(\"%s\")", src->location);
+  GST_DEBUG_OBJECT (src, "start(\"%s\") timeout=%i", src->location, src->timeout);
 
   if (!src->location) {
     GST_ELEMENT_ERROR (src, RESOURCE, OPEN_READ, (_("No URL set.")),

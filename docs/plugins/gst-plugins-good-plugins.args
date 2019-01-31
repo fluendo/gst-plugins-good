@@ -3785,7 +3785,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>timeout</NICK>
 <BLURB>Value in seconds to timeout a blocking I/O (0 = No timeout).</BLURB>
-<DEFAULT>0</DEFAULT>
+<DEFAULT>30</DEFAULT>
 </ARG>
 
 <ARG>
