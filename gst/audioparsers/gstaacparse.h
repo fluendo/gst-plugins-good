@@ -84,6 +84,7 @@ struct _GstAacParse {
   gint           pce_sample_rate;
   gint           pce_channels;
 
+  gboolean       convert_loas_to_raw;
   GstAacHeaderType header_type;
 };
 

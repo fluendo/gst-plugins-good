@@ -96,6 +96,9 @@ static gboolean gst_aac_parse_check_valid_frame (GstBaseParse * parse,
 static GstFlowReturn gst_aac_parse_parse_frame (GstBaseParse * parse,
     GstBaseParseFrame * frame);
 
+static GstFlowReturn gst_aac_parse_pre_push_frame (GstBaseParse * parse,
+    GstBaseParseFrame * frame);
+
 #define _do_init(bla) \
     GST_DEBUG_CATEGORY_INIT (aacparse_debug, "aacparse", 0, \
     "AAC audio stream parser");
@@ -152,6 +155,8 @@ gst_aac_parse_class_init (GstAacParseClass * klass)
   parse_class->parse_frame = GST_DEBUG_FUNCPTR (gst_aac_parse_parse_frame);
   parse_class->check_valid_frame =
       GST_DEBUG_FUNCPTR (gst_aac_parse_check_valid_frame);
+  parse_class->pre_push_frame =
+      GST_DEBUG_FUNCPTR (gst_aac_parse_pre_push_frame);
 }
 
 
@@ -206,7 +211,7 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
       stream_format = "adif";
       break;
     case DSPAAC_HEADER_LOAS:
-      stream_format = "loas";
+      stream_format = aacparse->convert_loas_to_raw ? "raw" : "loas";
       break;
     default:
       stream_format = NULL;
@@ -226,6 +231,8 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
       aacparse->codec_data = NULL;      /* Delegated the ownership */
     }
   }
+
+  /* TODO: generate a codec_data here for loas */
 
   GST_DEBUG_OBJECT (aacparse, "setting src caps: %" GST_PTR_FORMAT, src_caps);
 
@@ -487,6 +494,8 @@ gst_aac_parse_read_loas_audio_specific_config (GstAacParse * aacparse,
 }
 
 
+/* Here we must figure out the length to skip until the raw frame, and the length of the raw frame.
+ */
 static gboolean
 gst_aac_parse_read_loas_config (GstAacParse * aacparse, const guint8 * data,
     guint avail, gint * sample_rate, gint * channels, gint * version)
@@ -513,6 +522,7 @@ gst_aac_parse_read_loas_config (GstAacParse * aacparse, const guint8 * data,
     }
     *sample_rate = aacparse->sample_rate;
     *channels = aacparse->channels;
+
     return TRUE;
   }
 
@@ -1028,6 +1038,329 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
   return FALSE;
 }
 
+static gboolean
+latm_get_value (GstBitReader * br, guint32 * value)
+{
+  guint8 bytes_for_value;
+
+  *value = 0;
+  if (!gst_bit_reader_get_bits_uint8 (br, &bytes_for_value, 2))
+    return FALSE;
+
+  if (bytes_for_value > 4)
+    return FALSE;
+
+  for (i = 0; i <= bytes_for_value; i++) {
+    guint8 value_tmp;
+
+    *value *= 1 << 8;
+    if (!gst_bit_reader_get_bits_uint8 (br, &value_tmp, 8))
+      return FALSE;
+
+    *value += value_tmp;
+  }
+
+  return TRUE;
+}
+
+static GstFlowReturn
+gst_aac_parse_pre_push_frame (GstBaseParse * parse, GstBaseParseFrame * frame)
+{
+  GstAacParse *aacparse;
+  GstBuffer *buffer;
+  gint raw_data_offset, raw_data_size;
+  GstFlowReturn ret = GST_FLOW_ERROR;
+
+  aacparse = GST_AAC_PARSE (parse);
+  /* This function is needed only for loas --> raw convertion */
+  if (G_LIKELY (FALSE == (aacparse->header_type == DSPAAC_HEADER_LOAS &&
+              aacparse->convert_loas_to_raw)))
+    return GST_FLOW_OK;
+
+  /* Instream convertion (loas --> raw):
+     1. Get writable buffer from input.
+     2. Calculate offset & size of raw data.
+     3. Move data pointer of the buffer and set the size.
+     (mallocdata pointer is kept the same, so buffer will be freed correctly).
+     4. Put our buffer to output.
+
+     Note: we rely on aacparse that provides here already framed buffers.
+   */
+
+  buffer = gst_buffer_make_writable (frame->buffer);
+
+  /* 2. Calculate raw data offset & size. */
+  {
+    GstBitReader br;
+    guint8 u8;
+    gboolean use_same_stream_mux;       /* useSameStreamMux */
+
+    br = GST_BIT_READER_INIT_FROM_BUFFER (buffer);
+#define br_read8(var, bits) do {                            \
+      if (!gst_bit_reader_get_bits_uint8 (&br, &var, bits)) \
+        goto end;                                           \
+      while (0)
+
+#define br_skip(bits) do {                      \
+      if (!gst_bit_reader_skip (&br, bits))     \
+        goto end;                               \
+    } while (0)
+
+    /* Syncronization layer.
+       Sync word (11 bits) and size (13 bits) */
+    br_skip (11 + 13);
+
+    /* AudioMuxElement () */
+    br_read8 (u8, 1);
+    use_same_stream_mux = u8;
+
+    if (!use_same_stream_mux) {
+      /* StreamMuxConfig () */
+      gint i;
+      guint8 audio_mux_version;
+      guint8 num_program;
+
+      br_read8 (audio_mux_version, 1);
+
+      if (audio_mux_version == 1) {
+        br_read8 (aacparse->loas.audio_mux_version_a, 1);
+      } else
+        aacparse->loas.audio_mux_version_a = 0;
+
+      if (aacparse->loas.audio_mux_version_a == 0) {
+        guint stream_cnt;
+        guint8 all_streams_same_time_framing;
+        if (audio_mux_version == 1) {
+          if (!latm_get_value (&br, &tara_buffer_fullness))
+            goto end;
+        }
+
+        stream_cnt = 0;
+
+        br_read8 (all_streams_same_time_framing, 1);
+        br_read8 (aacparse->loas.num_sub_frames, 6);
+        br_read8 (num_program, 6);
+
+        guint8 stream_id[1 << 6][1 << 3];
+
+        /* Check: num programs has to be 1 */
+
+        for (i = 0; i < num_program; i++) {
+          guint8 num_layer, lay;
+          guint8 use_same_config;
+
+          br_read8 (num_layer, 3);
+
+          for (lay = 0; lay < num_layer; lay++) {
+            prog_s_indx[stream_cnt] = prog;
+            lay_s_indx[stream_cnt] = lay;
+            stream_id[prog][lay] = stream_cnt++;
+
+            if (prog == 0 && lay == 0)
+              use_same_config = 0;
+            else {
+              br_read8 (use_same_config, 1);
+            }
+
+            if (!use_same_config) {
+              if (audio_mux_version == 0) {
+                /* AudioSpecificConfig () */
+
+              } else {
+                if (!latm_get_value (&br, &asc_len))
+                  goto end;
+
+                br_skip (asc_len);
+                /* ascLen -= AudioSpecificConfig() */
+                /* fillBits */
+              }
+
+              br_read8 (frame_length_type[stream_id[prog][lay]], 3);
+              switch (frame_length_type[stream_id[prog][lay]]) {
+                case 0:
+                  br_read8 (latm_buffer_fullness[stream_id[prog][lay]], 8);
+                  if (!all_streams_same_time_framing) {
+                    if (lay != 0 && (audio_object_type[lay] == 6 ||
+                            audio_object_type[lay] == 20) &&
+                        (audio_object_type[lay - 1] == 8 ||
+                            audio_object_type[lay - 1] == 24)) {
+
+                      /* coreFrameOffset */
+                      br_skip (6);
+                    }
+                  }
+                  break;
+                case 1:
+                  if (!gst_bit_reader_get_bits_uint8 (&br,
+                          &frame_length[stream_id[prog][lay]], 9))
+                    goto end;
+                  break;
+                case 3:
+                case 4:
+                case 5:
+                  if (!gst_bit_reader_get_bits_uint8 (&br,
+                          &celp_frame_length_table_index[stream_id[prog][lay]],
+                          6))
+                    goto end;
+                  break;
+                case 6:
+                case 7:
+                  if (!gst_bit_reader_get_bits_uint8 (&br,
+                          &hvxc_frame_length_table_index[stream_id[prog][lay]],
+                          1))
+                    goto end;
+                  break;
+                default:
+                  goto end;
+              }
+            }
+
+            if (!gst_bit_reader_get_bits_uint8 (&br, &other_data_present, 1))
+              goto end;
+
+            if (other_data_present) {
+              /* otherDataLenBits = LatmGetValue(); */
+              if (!latm_get_value (&br, &other_data_len_bits))
+                goto end;
+            } else {
+              gint overflow_prevent = 0;
+              guint32 other_data_len_bits = 0;
+              do {
+                guint8 other_data_len_esc;
+                guint8 other_data_len_tmp;
+                other_data_len_bits *= 1 << 8;
+                if (!gst_bit_reader_get_bits_uint8 (&br,
+                        &other_data_len_esc, 1))
+                  goto end;
+                if (!gst_bit_reader_get_bits_uint8 (&br,
+                        &other_data_len_tmp, 8))
+                  goto end;
+                other_data_len_bits += other_data_len_tmp;
+              } while (other_data_len_esc && ++overflow_prevent < 4);
+            }
+
+            if (!gst_bit_reader_get_bits_uint8 (&br, &crc_check_present, 1))
+              goto end;
+            if (crc_check_present) {
+              if (!gst_bit_reader_get_bits_uint8 (&br, &crc_check_sum, 8))
+                goto end;
+            }
+          }
+        }
+
+      } else
+        goto end;
+    }
+
+    if (aacparse->loas.audio_mux_version_a == 0) {
+      gint i;
+      for (i = 0; i < aacparse->loas.num_sub_frames; i++) {
+        /* PayloadLengthInfo () */
+        if (all_streams_same_time_framing) {
+          for (prog = 0; prog <= num_program; prog++) {
+            for (lay = 0; lay <= num_layer; lay++) {
+              switch (frame_length_type[stream_id[prog][lay]]) {
+                case 0:{
+                  guint8 tmp;
+                  mux_slot_length_bytes[stream_id[prog][lay]] = 0;
+                  do {
+                    if (!gst_bit_reader_get_bits_uint8 (&br, &tmp, 8))
+                      goto end;
+                    mux_slot_length_bytes[stream_id[prog][lay]] += tmp;
+                  } while (tmp == 255);
+                }
+                  break;
+                case 3:
+                case 5:
+                case 7:{
+                  if (!gst_bit_reader_get_bits_uint8 (&br,
+                          &mux_slot_length_coded[stream_id[prog]
+                              [lay]], 2))
+                    goto end;
+                }
+                  break;
+                default:
+                  goto end;
+              }
+            }
+          }
+        } else {
+          guint8 num_chunk;
+          guint8 chunk_cnt;
+          if (!gst_bit_reader_get_bits_uint8 (&br, &num_chunk, 4))
+            goto end;
+          for (chunk_cnt = 0; chunk_cnt < num_chunks; chunk_cnt++) {
+            if (!gst_bit_reader_get_bits_uint8 (&br, &stream_indx, 4))
+              goto end;
+            prog = prog_c_indx[chunk_cnt] = prog_s_indx[stream_indx];
+            lay = lay_c_indx[chunk_cnt] = lay_s_indx[stream_indx];
+            if (frame_length_type[stream_id[prog][lay]]) {
+case 0:    {
+              mux_slot_length_bytes[stream_id[prog][lay]]
+                  = 0;
+              do {
+                guint8 tmp;
+                if (!gst_bit_reader_get_bits_uint8 (&br, &tmp, 8))
+                  goto end;
+                mux_slot_length_bytes[stream_id[prog]
+                    [lay]] += tmp;
+              } while (tmp == 255);
+              if (!gst_bit_reader_get_bits_uint8 (&br,
+                      &au_end_flag[stream_id[prog][lay]], 1))
+                goto end;
+            }
+              break;
+case 3:
+case 5:
+case 7:    {
+              if (!gst_bit_reader_get_bits_uint8 (&br,
+                      &mux_slot_length_coded[stream_id[prog][lay]], 2))
+                goto end;
+            }
+              break;
+default:
+              goto end;
+            }
+          }
+        }
+        /* PayloadMux () */
+        if (all_streams_same_time_framing) {
+          for (prog = 0; prog <= num_program; prog++) {
+            for (lay = 0; lay <= num_layer; lay++) {
+              /* payload [streamID[prog][lay]]; */
+            }
+          }
+        } else {
+          for (chunk_cnt = 0; chunk_cnt <= num_chunk; chunk_cnt++) {
+            prog = prog_c_indx[chunk_cnt];
+            lay = lay_c_indx[chunk_cnt];
+            /* payload [streamID[prog][lay]]; */
+          }
+        }
+      }
+    }
+
+    /* Then by the spec we have "otherData" bits and alignment,
+       but we don't need to parse it */
+  }
+}
+
+                                    /* Sanity check */
+if (GST_BUFFER_SIZE (buffer) < raw_data_offset + raw_data_size) {
+  GST_OBJECT_ERROR ("Can't extract raw data from the buffer");
+  goto end;
+}
+
+                                    /* 3. Move data pointer of the buffer and set the size. */
+GST_BUFFER_DATA (buffer) += raw_data_offset;
+GST_BUFFER_SIZE (buffer) = raw_data_size;
+                                    /* 4. Put our buffer to output. */
+gst_buffer_replace (&frame->buffer, buffer);
+end:
+gst_buffer_unref (buffer);
+return ret;
+}
+
 
 /**
  * gst_aac_parse_check_valid_frame:
@@ -1041,8 +1374,9 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
  *
  * Returns: TRUE if buffer contains a valid frame.
  */
-static gboolean
-gst_aac_parse_check_valid_frame (GstBaseParse * parse,
+     static gboolean
+         gst_aac_parse_check_valid_frame
+         (GstBaseParse * parse,
     GstBaseParseFrame * frame, guint * framesize, gint * skipsize)
 {
   const guint8 *data;
@@ -1050,54 +1384,49 @@ gst_aac_parse_check_valid_frame (GstBaseParse * parse,
   gboolean ret = FALSE;
   gboolean lost_sync;
   GstBuffer *buffer;
-
   aacparse = GST_AAC_PARSE (parse);
   buffer = frame->buffer;
   data = GST_BUFFER_DATA (buffer);
-
   lost_sync = GST_BASE_PARSE_LOST_SYNC (parse);
-
-  if (aacparse->header_type == DSPAAC_HEADER_ADIF ||
-      aacparse->header_type == DSPAAC_HEADER_NONE) {
+  if (aacparse->header_type ==
+      DSPAAC_HEADER_ADIF || aacparse->header_type == DSPAAC_HEADER_NONE) {
     /* There is nothing to parse */
     *framesize = GST_BUFFER_SIZE (buffer);
     ret = TRUE;
-
   } else if (aacparse->header_type == DSPAAC_HEADER_NOT_PARSED || lost_sync) {
 
-    ret = gst_aac_parse_detect_stream (aacparse, data, GST_BUFFER_SIZE (buffer),
+    ret =
+        gst_aac_parse_detect_stream (aacparse,
+        data, GST_BUFFER_SIZE (buffer),
         GST_BASE_PARSE_DRAINING (parse), framesize, skipsize);
-
   } else if (aacparse->header_type == DSPAAC_HEADER_ADTS) {
     guint needed_data = 1024;
-
-    ret = gst_aac_parse_check_adts_frame (aacparse, data,
-        GST_BUFFER_SIZE (buffer), GST_BASE_PARSE_DRAINING (parse),
-        framesize, &needed_data);
-
+    ret =
+        gst_aac_parse_check_adts_frame (aacparse,
+        data, GST_BUFFER_SIZE (buffer),
+        GST_BASE_PARSE_DRAINING (parse), framesize, &needed_data);
     if (!ret) {
       GST_DEBUG ("buffer didn't contain valid frame");
-      gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
-          needed_data);
+      gst_base_parse_set_min_frame_size
+          (GST_BASE_PARSE (aacparse), needed_data);
     }
 
   } else if (aacparse->header_type == DSPAAC_HEADER_LOAS) {
     guint needed_data = 1024;
-
-    ret = gst_aac_parse_check_loas_frame (aacparse, data,
-        GST_BUFFER_SIZE (buffer), GST_BASE_PARSE_DRAINING (parse),
-        framesize, &needed_data);
-
+    ret =
+        gst_aac_parse_check_loas_frame (aacparse,
+        data, GST_BUFFER_SIZE (buffer),
+        GST_BASE_PARSE_DRAINING (parse), framesize, &needed_data);
     if (!ret) {
       GST_DEBUG ("buffer didn't contain valid frame");
-      gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
-          needed_data);
+      gst_base_parse_set_min_frame_size
+          (GST_BASE_PARSE (aacparse), needed_data);
     }
 
   } else {
     GST_DEBUG ("buffer didn't contain valid frame");
-    gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
-        ADTS_MAX_SIZE);
+    gst_base_parse_set_min_frame_size
+        (GST_BASE_PARSE (aacparse), ADTS_MAX_SIZE);
   }
 
   return ret;
@@ -1134,66 +1463,63 @@ gst_aac_parse_parse_frame (GstBaseParse * parse, GstBaseParseFrame * frame)
   GstBuffer *buffer;
   GstFlowReturn ret = GST_FLOW_OK;
   gint rate, channels;
-
   aacparse = GST_AAC_PARSE (parse);
   buffer = frame->buffer;
-
   if (aacparse->header_type == DSPAAC_HEADER_ADTS) {
     /* see above */
     frame->overhead = 7;
-
     if (aacparse->have_pce) {
       rate = aacparse->pce_sample_rate;
       channels = aacparse->pce_channels;
     } else
-      gst_aac_parse_parse_adts_header (GST_BUFFER_DATA (buffer),
+      gst_aac_parse_parse_adts_header
+          (GST_BUFFER_DATA (buffer),
           GST_BUFFER_SIZE (buffer), &rate, &channels, NULL, NULL, NULL);
-
     GST_LOG_OBJECT (aacparse, "rate: %d, chans: %d", rate, channels);
-
-    if (G_UNLIKELY (rate != aacparse->sample_rate
-            || channels != aacparse->channels)) {
+    if (G_UNLIKELY (rate !=
+            aacparse->sample_rate || channels != aacparse->channels)) {
       aacparse->sample_rate = rate;
       aacparse->channels = channels;
-
-      if (!gst_aac_parse_set_src_caps (aacparse,
-              GST_PAD_CAPS (GST_BASE_PARSE (aacparse)->sinkpad))) {
+      if (!gst_aac_parse_set_src_caps
+          (aacparse, GST_PAD_CAPS (GST_BASE_PARSE (aacparse)->sinkpad))) {
         /* If linking fails, we need to return appropriate error */
         ret = GST_FLOW_NOT_LINKED;
       }
 
-      gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse),
+      gst_base_parse_set_frame_rate
+          (GST_BASE_PARSE (aacparse),
           aacparse->sample_rate, aacparse->frame_samples, 2, 2);
     }
   } else if (aacparse->header_type == DSPAAC_HEADER_LOAS) {
     gboolean setcaps = FALSE;
-
     /* see above */
     frame->overhead = 3;
-
-    if (!gst_aac_parse_read_loas_config (aacparse, GST_BUFFER_DATA (buffer),
+    if (!gst_aac_parse_read_loas_config
+        (aacparse, GST_BUFFER_DATA (buffer),
             GST_BUFFER_SIZE (buffer), &rate, &channels, NULL)) {
       GST_WARNING_OBJECT (aacparse, "Error reading LOAS config");
-    } else if (G_UNLIKELY (rate != aacparse->sample_rate
-            || channels != aacparse->channels)) {
+    } else
+        if (G_UNLIKELY (rate !=
+            aacparse->sample_rate || channels != aacparse->channels)) {
       aacparse->sample_rate = rate;
       aacparse->channels = channels;
       setcaps = TRUE;
-      GST_INFO_OBJECT (aacparse, "New LOAS config: %d Hz, %d channels", rate,
-          channels);
+      GST_INFO_OBJECT (aacparse,
+          "New LOAS config: %d Hz, %d channels", rate, channels);
     }
 
     /* We want to set caps both at start, and when rate/channels change.
        Since only some LOAS frames have that info, we may receive frames
        before knowing about rate/channels. */
     if (setcaps || !GST_PAD_CAPS (GST_BASE_PARSE_SRC_PAD (aacparse))) {
-      if (!gst_aac_parse_set_src_caps (aacparse,
-              GST_PAD_CAPS (GST_BASE_PARSE (aacparse)->sinkpad))) {
+      if (!gst_aac_parse_set_src_caps
+          (aacparse, GST_PAD_CAPS (GST_BASE_PARSE (aacparse)->sinkpad))) {
         /* If linking fails, we need to return appropriate error */
         ret = GST_FLOW_NOT_LINKED;
       }
 
-      gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse),
+      gst_base_parse_set_frame_rate
+          (GST_BASE_PARSE (aacparse),
           aacparse->sample_rate, aacparse->frame_samples, 2, 2);
     }
   }
@@ -1214,7 +1540,6 @@ static gboolean
 gst_aac_parse_start (GstBaseParse * parse)
 {
   GstAacParse *aacparse;
-
   aacparse = GST_AAC_PARSE (parse);
   GST_DEBUG ("start");
   aacparse->frame_samples = 1024;
@@ -1249,29 +1574,89 @@ gst_aac_parse_sink_getcaps (GstBaseParse * parse)
 {
   GstCaps *peercaps;
   GstCaps *res;
-
+  GstAacParse *aacparse = GST_AAC_PARSE (parse);
+  /* Reinitialize permission to convert loas --> raw */
+  aacparse->convert_loas_to_raw = FALSE;
   peercaps = gst_pad_get_allowed_caps (GST_BASE_PARSE_SRC_PAD (parse));
   if (peercaps) {
     guint i, n;
-
-    /* Remove the framed field */
     peercaps = gst_caps_make_writable (peercaps);
     n = gst_caps_get_size (peercaps);
     for (i = 0; i < n; i++) {
       GstStructure *s = gst_caps_get_structure (peercaps, i);
-
+      /* Remove the framed field */
       gst_structure_remove_field (s, "framed");
     }
 
     res =
         gst_caps_intersect_full (peercaps,
-        gst_pad_get_pad_template_caps (GST_BASE_PARSE_SINK_PAD (parse)),
-        GST_CAPS_INTERSECT_FIRST);
+        gst_pad_get_pad_template_caps
+        (GST_BASE_PARSE_SINK_PAD (parse)), GST_CAPS_INTERSECT_FIRST);
     gst_caps_unref (peercaps);
+    /* If peer don't accept "loas" stream-format, but accepts "raw",
+       we add "loas" to intersected caps, because we can convert "loas" stream
+       to "raw". Given that stream-formats "raw" and "loas" present in template caps,
+       we can check if peer accepts "raw" or "loas" from intersected ones. */
+    n = gst_caps_get_size (res);
+    for (i = 0; i < n; i++) {
+      GstStructure *s = gst_caps_get_structure (res, i);
+      if (gst_structure_has_field (s, "stream-format")) {
+        const GValue *v = gst_structure_get_value (s,
+            "stream-format");
+        if (G_VALUE_HOLDS_STRING (v)) {
+          /* If we have one string and it's "raw", then "loas"
+             is not supported by this structure. So, we'll replace
+             string "raw" by list "{ raw, loas }". */
+          if (!g_strcmp0 (g_value_get_string (v), "raw")) {
+            GValue vlist = G_VALUE_INIT;
+            GValue vstring = G_VALUE_INIT;
+            g_value_init (&vlist, GST_TYPE_LIST);
+            g_value_init (&vstring, G_TYPE_STRING);
+            g_value_set_string (&vstring, "raw");
+            gst_value_list_append_value (&vlist, &vstring);
+            g_value_set_string (&vstring, "loas");
+            gst_value_list_append_value (&vlist, &vstring);
+            /* Now replace "raw" by "{ raw, loas }" */
+            gst_structure_set_value (s, "stream-format", &vlist);
+            g_value_unset (&vlist);
+            g_value_unset (&vstring);
+            /* Allow loas --> raw convertion to aacparse */
+            aacparse->convert_loas_to_raw = TRUE;
+          }
+        } else if (GST_VALUE_HOLDS_LIST (v)) {
+          gboolean peer_accepts_raw = FALSE;
+          gboolean peer_accepts_loas = FALSE;
+          guint list_size = gst_value_list_get_size (v), j;
+          for (j = 0; j < list_size; j++) {
+            const GValue *ve = gst_value_list_get_value (v, j);
+            const gchar *stream_format;
+            if (G_VALUE_HOLDS_STRING (ve)
+                && (stream_format = g_value_get_string (ve))) {
+              peer_accepts_raw |= !g_strcmp0 (stream_format, "raw");
+              peer_accepts_loas |= !g_strcmp0 (stream_format, "loas");
+            }
+          }
+
+          if (peer_accepts_raw && !peer_accepts_loas) {
+            GValue vstring = G_VALUE_INIT;
+            GValue vlist = G_VALUE_INIT;
+            g_value_init (&vstring, G_TYPE_STRING);
+            g_value_set_string (&vstring, "loas");
+            /* Create a new GST_VALUE_LIST that is a concatenation of
+               previous one + "loas", and replace stream-format field by it */
+            gst_value_list_concat (&vlist, &v, &vstring);
+            g_value_unset (&vlist);
+            g_value_unset (&vstring);
+            /* Allow loas --> raw convertion to aacparse */
+            aacparse->convert_loas_to_raw = TRUE;
+          }
+        }
+      }
+    }
   } else {
     res =
-        gst_caps_copy (gst_pad_get_pad_template_caps (GST_BASE_PARSE_SINK_PAD
-            (parse)));
+        gst_caps_copy
+        (gst_pad_get_pad_template_caps (GST_BASE_PARSE_SINK_PAD (parse)));
   }
 
   return res;
