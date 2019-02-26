@@ -232,8 +232,6 @@ struct _QtDemuxStream
   /* language */
   gchar lang_id[4];             /* ISO 639-2T language code */
 
-  const gchar *avcomp_enc;      /* OIPF 8.4.2 AVComponent->encoding */
-
   /* our samples */
   guint32 n_samples;
   QtDemuxSample *samples;
@@ -7181,7 +7179,6 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     } else {
       switch (stream->fourcc) {
         case FOURCC_avc1:
-          stream->avcomp_enc = "video/mp4";
         case FOURCC_avc3:
         {
           gint len = QT_UINT32 (stsd_data) - 0x56;
@@ -8091,7 +8088,6 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
       || stream->subtype == FOURCC_subt) {
 
     stream->sampled = TRUE;
-    stream->avcomp_enc = "3GPP-TT";
 
     offset = 0;
 
@@ -8172,7 +8168,6 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     stream->rate = 16000;
   } else if (stream->fourcc == FOURCC_mp4a) {
     stream->sampled = TRUE;
-    stream->avcomp_enc = "audio/mp4";
   }
 
   stbl = qtdemux_tree_get_parent_by_type (fourcc_node, FOURCC_stbl);
@@ -10193,14 +10188,9 @@ gst_qtdemux_handle_esds (GstQTDemux * qtdemux, QtDemuxStream * stream,
     stream->caps = caps;
   }
 
-  if (codec_name && list) {
+  if (codec_name && list)
     gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
         GST_TAG_AUDIO_CODEC, codec_name, NULL);
-
-    if (stream->avcomp_enc)
-      gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
-          AVCOMPONENT_TAG_ENCODING, stream->avcomp_enc, NULL);
-  }
 
   /* Add the codec_data attribute to caps, if we have it */
   if (data_ptr) {
