@@ -223,6 +223,8 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
     if (aacparse->header_type == DSPAAC_HEADER_ADTS && aacparse->codec_data) {
       gst_structure_set (s, "codec_data", GST_TYPE_BUFFER,
           aacparse->codec_data, NULL);
+      gst_codec_utils_aac_caps_set_level_and_profile (src_caps,
+          GST_BUFFER_DATA (aacparse->codec_data), 2);
       aacparse->codec_data = NULL;      /* Delegated the ownership */
     }
   }
