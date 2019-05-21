@@ -8184,7 +8184,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
       list = gst_tag_list_new ();
 
     /* convert ISO 639-2 code to ISO 639-1 */
-    lang_code = gst_tag_get_language_code (stream->lang_id);
+    lang_code = gst_tag_get_language_code_iso_639_2T (stream->lang_id);
     gst_tag_list_add (list, GST_TAG_MERGE_REPLACE,
         GST_TAG_LANGUAGE_CODE, (lang_code) ? lang_code : stream->lang_id, NULL);
   }
