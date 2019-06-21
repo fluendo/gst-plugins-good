@@ -8032,14 +8032,14 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
         case FOURCC_mp4a:
         {
           /* mp4a atom withtout ESDS; Attempt to build codec data from atom */
-          gint len = QT_UINT32 (stsd_entry);
+          gint len = QT_UINT32 (stsd_data);
 
           if (len >= 34) {
-            guint16 sound_version = QT_UINT16 (stsd_entry + 16);
+            guint16 sound_version = QT_UINT16 (stsd_data + 16);
 
             if (sound_version == 1) {
-              guint16 channels = QT_UINT16 (stsd_entry + 24);
-              guint32 time_scale = QT_UINT32 (stsd_entry + 30);
+              guint16 channels = QT_UINT16 (stsd_data + 24);
+              guint32 time_scale = QT_UINT32 (stsd_data + 30);
               guint8 codec_data[2];
               GstBuffer *buf;
               gint profile = 2; /* FIXME: Can this be determined somehow?
