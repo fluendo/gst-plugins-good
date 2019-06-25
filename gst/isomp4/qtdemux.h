@@ -24,9 +24,7 @@
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
 
-G_BEGIN_DECLS
-
-GST_DEBUG_CATEGORY_EXTERN (qtdemux_debug);
+G_BEGIN_DECLS GST_DEBUG_CATEGORY_EXTERN (qtdemux_debug);
 #define GST_CAT_DEFAULT qtdemux_debug
 
 #define GST_TYPE_QTDEMUX \
@@ -53,26 +51,28 @@ typedef struct _GstQTDemuxClass GstQTDemuxClass;
 typedef struct _QtDemuxStream QtDemuxStream;
 typedef struct _QtDemuxMatrix QtDemuxMatrix;
 
-struct _QtDemuxMatrix {
+struct _QtDemuxMatrix
+{
   gint32 a, b, u;
   gint32 c, d, v;
   gint32 x, y, w;
 };
 
 
-struct _GstQTDemux {
+struct _GstQTDemux
+{
   GstElement element;
 
   /* pads */
   GstPad *sinkpad;
 
   QtDemuxStream *streams[GST_QTDEMUX_MAX_STREAMS];
-  gint     n_streams;
-  gint     n_video_streams;
-  gint     n_audio_streams;
-  gint     n_sub_streams;
+  gint n_streams;
+  gint n_video_streams;
+  gint n_audio_streams;
+  gint n_sub_streams;
 
-  guint  major_brand;
+  guint major_brand;
   GstBuffer *comp_brands;
   GNode *moov_node;
   GNode *moov_node_compressed;
@@ -111,6 +111,7 @@ struct _GstQTDemux {
   GstSegment segment;
   gboolean segment_running;
   GstEvent *pending_newsegment;
+  GList *pending_events;
 
   /* gst index support */
   GstIndex *element_index;
@@ -121,14 +122,18 @@ struct _GstQTDemux {
 
   gboolean upstream_seekable;
   gboolean upstream_size;
+
+  gint64 earliest_presentation_time;
 };
 
-struct _GstQTDemuxClass {
+struct _GstQTDemuxClass
+{
   GstElementClass parent_class;
+  void (*emsg) (GstQTDemux * demux, GstBuffer * buffer);
 };
 
 GType gst_qtdemux_get_type (void);
 
+#define AVCOMPONENT_TAG_PID "av-pid"
 G_END_DECLS
-
 #endif /* __GST_QTDEMUX_H__ */

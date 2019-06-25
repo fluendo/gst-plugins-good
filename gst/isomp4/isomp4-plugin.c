@@ -51,6 +51,9 @@ plugin_init (GstPlugin * plugin)
       G_TYPE_STRING, GST_QT_DEMUX_CLASSIFICATION_TAG, "content classification",
       gst_tag_merge_use_first);
 
+  gst_tag_register (AVCOMPONENT_TAG_PID, GST_TAG_FLAG_META,
+      G_TYPE_UINT, "av pid", "OIPF 8.4.2 AVComponent pid", NULL);
+
   if (!gst_element_register (plugin, "qtdemux",
           GST_RANK_PRIMARY, GST_TYPE_QTDEMUX))
     return FALSE;

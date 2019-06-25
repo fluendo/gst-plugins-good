@@ -68,6 +68,8 @@ GST_DEBUG_CATEGORY_STATIC (aacparse_debug);
 #define ADTS_MAX_SIZE 10        /* Should be enough */
 #define LOAS_MAX_SIZE 3         /* Should be enough */
 
+#define MAX_PCE_SIZE 40
+#define AAC_ADTS_HEADER_SIZE 7
 
 #define AAC_FRAME_DURATION(parse) (GST_SECOND/parse->frames_per_sec)
 
@@ -105,7 +107,7 @@ static inline gint
 gst_aac_parse_get_sample_rate_from_index (guint sr_idx)
 {
   static const guint aac_sample_rates[] = { 96000, 88200, 64000, 48000, 44100,
-    32000, 24000, 22050, 16000, 12000, 11025, 8000
+    32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350
   };
 
   if (sr_idx < G_N_ELEMENTS (aac_sample_rates))
@@ -124,8 +126,7 @@ gst_aac_parse_base_init (gpointer klass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  gst_element_class_add_static_pad_template (element_class,
-      &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &sink_template);
   gst_element_class_add_static_pad_template (element_class, &src_template);
 
   gst_element_class_set_details_simple (element_class,
@@ -216,8 +217,17 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
     gst_structure_set (s, "rate", G_TYPE_INT, aacparse->sample_rate, NULL);
   if (aacparse->channels > 0)
     gst_structure_set (s, "channels", G_TYPE_INT, aacparse->channels, NULL);
-  if (stream_format)
+  if (stream_format) {
     gst_structure_set (s, "stream-format", G_TYPE_STRING, stream_format, NULL);
+
+    if (aacparse->header_type == DSPAAC_HEADER_ADTS && aacparse->codec_data) {
+      gst_structure_set (s, "codec_data", GST_TYPE_BUFFER,
+          aacparse->codec_data, NULL);
+      gst_codec_utils_aac_caps_set_level_and_profile (src_caps,
+          GST_BUFFER_DATA (aacparse->codec_data), 2);
+      aacparse->codec_data = NULL;      /* Delegated the ownership */
+    }
+  }
 
   GST_DEBUG_OBJECT (aacparse, "setting src caps: %" GST_PTR_FORMAT, src_caps);
 
@@ -670,24 +680,126 @@ gst_aac_parse_check_loas_frame (GstAacParse * aacparse,
   return FALSE;
 }
 
-/* caller ensure sufficient data */
-static inline void
-gst_aac_parse_parse_adts_header (GstAacParse * aacparse, const guint8 * data,
-    gint * rate, gint * channels, gint * object, gint * version)
+/* Taken from ffmpeg/libavcodec/mpeg4audio.c: avpriv_copy_pce_data()
+   + headers to support bitstream reading/writing */
+#include "get_bits.h"
+#include "put_bits.h"
+static unsigned int
+copy_bits (PutBitContext * pb, GetBitContext * gb, int bits)
 {
+  unsigned int el = get_bits (gb, bits);
+  put_bits (pb, bits, el);
+  return el;
+}
 
-  if (rate) {
-    gint sr_idx = (data[2] & 0x3c) >> 2;
+static int
+gst_aacparse_copy_pce_data (PutBitContext * pb, GetBitContext * gb, gint * rate,
+    gint * channels)
+{
+  int five_bit_ch, four_bit_ch, comment_size, bits;
+  int offset = put_bits_count (pb);
 
-    *rate = gst_aac_parse_get_sample_rate_from_index (sr_idx);
+  copy_bits (pb, gb, 6);        //Tag, Object Type
+  *rate = gst_aac_parse_get_sample_rate_from_index (copy_bits (pb, gb, 4));     // Frequency
+  five_bit_ch = copy_bits (pb, gb, 4);  //Front
+  five_bit_ch += copy_bits (pb, gb, 4); //Side
+  five_bit_ch += copy_bits (pb, gb, 4); //Back
+  four_bit_ch = copy_bits (pb, gb, 2);  //LFE
+
+  /* Front + Side + Back + LFE */
+  *channels = five_bit_ch + four_bit_ch;
+
+  four_bit_ch += copy_bits (pb, gb, 3); //Data
+  five_bit_ch += copy_bits (pb, gb, 4); //Coupling
+
+  if (copy_bits (pb, gb, 1))    //Mono Mixdown
+    copy_bits (pb, gb, 4);
+  if (copy_bits (pb, gb, 1))    //Stereo Mixdown
+    copy_bits (pb, gb, 4);
+  if (copy_bits (pb, gb, 1))    //Matrix Mixdown
+    copy_bits (pb, gb, 3);
+  for (bits = five_bit_ch * 5 + four_bit_ch * 4; bits > 16; bits -= 16)
+    copy_bits (pb, gb, 16);
+  if (bits)
+    copy_bits (pb, gb, bits);
+  avpriv_align_put_bits (pb);
+  align_get_bits (gb);
+  comment_size = copy_bits (pb, gb, 8);
+  for (; comment_size > 0; comment_size--)
+    copy_bits (pb, gb, 8);
+
+  return put_bits_count (pb) - offset;
+}
+
+
+/* caller ensure sufficient data */
+static inline gboolean
+gst_aac_parse_parse_adts_header (const guint8 * data, gsize data_size,
+    gint * rate, gint * channels, gint * object, gint * version,
+    GstBuffer * codec_data_buf)
+{
+  guint8 *codec_data;
+  gint sr_idx = (data[2] & 0x3c) >> 2;
+  gint ch = ((data[2] & 0x01) << 2) | ((data[3] & 0xc0) >> 6);
+  gint obj = (data[2] & 0xc0) >> 6;
+
+  if (codec_data_buf) {
+    codec_data = GST_BUFFER_DATA (codec_data_buf);
+    /*
+       5 bits: obj + 1
+       4 bits: sr_idx
+       4 bits: ch
+       3 bits: always zeroes
+     */
+    codec_data[0] = ((obj + 1) << 3) | sr_idx >> 1;
+    codec_data[1] = (sr_idx << 7) | (ch << 3);
+    GST_BUFFER_SIZE (codec_data_buf) = 2;
   }
+
+  if (rate)
+    *rate = gst_aac_parse_get_sample_rate_from_index (sr_idx);
+
   if (channels)
-    *channels = ((data[2] & 0x01) << 2) | ((data[3] & 0xc0) >> 6);
+    *channels = ch;
 
   if (version)
     *version = (data[1] & 0x08) ? 2 : 4;
+
   if (object)
-    *object = (data[2] & 0xc0) >> 6;
+    *object = obj;
+
+  if (ch)
+    return TRUE;
+
+  if (codec_data_buf) {
+    GetBitContext gb;
+    PutBitContext pb;
+    /* Jump forward through adts header */
+    /* + Skip crc checksum */
+    data += AAC_ADTS_HEADER_SIZE + 2 * !(data[1] & 0x1);
+    data_size -= AAC_ADTS_HEADER_SIZE + 2 * !(data[1] & 0x1);
+
+    if (data_size <= 0)
+      return FALSE;
+
+    /* Now we need to copy PCE data to the rest of codec_data_buf */
+    init_get_bits (&gb, data, data_size * 8);
+    init_put_bits (&pb, codec_data + 2, MAX_PCE_SIZE * 8);
+
+    if (get_bits (&gb, 3) != 5) {
+      GST_ERROR ("PCE-based channel configuration "
+          "without PCE as first syntax " "element");
+      return FALSE;
+    }
+
+    GST_BUFFER_SIZE (codec_data_buf) +=
+        gst_aacparse_copy_pce_data (&pb, &gb, rate, channels) / 8;
+    flush_put_bits (&pb);
+
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 /**
@@ -758,8 +870,27 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
 
     GST_INFO ("ADTS ID: %d, framesize: %d", (data[1] & 0x08) >> 3, *framesize);
 
-    gst_aac_parse_parse_adts_header (aacparse, data, &rate, &channels,
-        &aacparse->object_type, &aacparse->mpegversion);
+    if (!aacparse->codec_data)
+      aacparse->codec_data = gst_buffer_new_and_alloc (2 + MAX_PCE_SIZE);
+
+    gst_aac_parse_parse_adts_header (data, avail, &rate, &channels,
+        &aacparse->object_type, &aacparse->mpegversion, aacparse->codec_data);
+
+    /* If we have PCE, then we need to use rate/channels from it, because they do not
+       present in ADTS header */
+    if (GST_BUFFER_SIZE (aacparse->codec_data) > 2) {
+      GST_DEBUG_OBJECT (aacparse, "Processed PCE element:"
+          " samplerate %d, channels %d."
+          "created codec_data of size %d", rate, channels,
+          GST_BUFFER_SIZE (aacparse->codec_data));
+      /* FIXME: sampling rate from both PCE and ADTS header is incorrect
+         on some files. FFmpeg multiples sampling rate of this file on 2
+         during decoding, and it becomes correct.
+         P.S. Number of channels is also incorrect :( */
+      aacparse->have_pce = TRUE;
+      aacparse->pce_sample_rate = rate;
+      aacparse->pce_channels = channels;
+    }
 
     if (!channels || !framesize) {
       GST_DEBUG_OBJECT (aacparse, "impossible ADTS configuration");
@@ -1013,8 +1144,13 @@ gst_aac_parse_parse_frame (GstBaseParse * parse, GstBaseParseFrame * frame)
     /* see above */
     frame->overhead = 7;
 
-    gst_aac_parse_parse_adts_header (aacparse, GST_BUFFER_DATA (buffer),
-        &rate, &channels, NULL, NULL);
+    if (aacparse->have_pce) {
+      rate = aacparse->pce_sample_rate;
+      channels = aacparse->pce_channels;
+    } else
+      gst_aac_parse_parse_adts_header (GST_BUFFER_DATA (buffer),
+          GST_BUFFER_SIZE (buffer), &rate, &channels, NULL, NULL, NULL);
+
     GST_LOG_OBJECT (aacparse, "rate: %d, chans: %d", rate, channels);
 
     if (G_UNLIKELY (rate != aacparse->sample_rate
@@ -1100,7 +1236,13 @@ gst_aac_parse_start (GstBaseParse * parse)
 static gboolean
 gst_aac_parse_stop (GstBaseParse * parse)
 {
+  GstAacParse *aacparse = GST_AAC_PARSE (parse);
   GST_DEBUG ("stop");
+  if (aacparse->codec_data) {
+    gst_buffer_unref (aacparse->codec_data);
+    aacparse->codec_data = NULL;
+  }
+  aacparse->have_pce = FALSE;
   return TRUE;
 }
 

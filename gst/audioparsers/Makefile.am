@@ -17,4 +17,4 @@ libgstaudioparsers_la_LIBTOOLFLAGS = --tag=disable-static
 endif
 
 noinst_HEADERS = gstaacparse.h gstamrparse.h gstac3parse.h \
-	gstdcaparse.h gstflacparse.h gstmpegaudioparse.h
+	gstdcaparse.h gstflacparse.h gstmpegaudioparse.h get_bits.h put_bits.h

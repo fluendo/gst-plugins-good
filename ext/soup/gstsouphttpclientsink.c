@@ -218,7 +218,7 @@ gst_soup_http_client_sink_init (GstSoupHttpClientSink * souphttpsink,
   souphttpsink->proxy_id = NULL;
   souphttpsink->proxy_pw = NULL;
   souphttpsink->prop_session = NULL;
-  souphttpsink->timeout = 1;
+  souphttpsink->timeout = 30;
   proxy = g_getenv ("http_proxy");
   if (proxy && !gst_soup_http_client_sink_set_proxy (souphttpsink, proxy)) {
     GST_WARNING_OBJECT (souphttpsink,
@@ -518,6 +518,7 @@ gst_soup_http_client_sink_start (GstBaseSink * sink)
     g_mutex_unlock (souphttpsink->mutex);
     GST_LOG_OBJECT (souphttpsink, "main loop thread running");
 
+    GST_DEBUG_OBJECT (souphttpsink, "timeout=%d", souphttpsink->timeout);
     souphttpsink->session =
         soup_session_async_new_with_options (SOUP_SESSION_ASYNC_CONTEXT,
         souphttpsink->context, SOUP_SESSION_USER_AGENT,

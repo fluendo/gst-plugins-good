@@ -126,6 +126,7 @@ enum
 
 #define DEFAULT_USER_AGENT           "GStreamer souphttpsrc "
 #define DEFAULT_KEEP_ALIVE           FALSE
+#define DEFAULT_TIMEOUT              30
 
 static void gst_soup_http_src_uri_handler_init (gpointer g_iface,
     gpointer iface_data);
@@ -273,7 +274,7 @@ gst_soup_http_src_class_init (GstSoupHTTPSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_TIMEOUT,
       g_param_spec_uint ("timeout", "timeout",
           "Value in seconds to timeout a blocking I/O (0 = No timeout).", 0,
-          3600, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          3600, DEFAULT_TIMEOUT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_EXTRA_HEADERS,
       g_param_spec_boxed ("extra-headers", "Extra Headers",
           "Extra headers to append to the HTTP request",
@@ -355,6 +356,7 @@ gst_soup_http_src_init (GstSoupHTTPSrc * src, GstSoupHTTPSrcClass * g_class)
   const gchar *proxy;
 
   src->location = NULL;
+  src->redirection_uri = NULL;
   src->automatic_redirect = TRUE;
   src->user_agent = g_strdup (DEFAULT_USER_AGENT);
   src->user_id = NULL;
@@ -367,6 +369,7 @@ gst_soup_http_src_init (GstSoupHTTPSrc * src, GstSoupHTTPSrcClass * g_class)
   src->context = NULL;
   src->session = NULL;
   src->msg = NULL;
+  src->timeout = DEFAULT_TIMEOUT;
   proxy = g_getenv ("http_proxy");
   if (proxy && !gst_soup_http_src_set_proxy (src, proxy)) {
     GST_WARNING_OBJECT (src,
@@ -397,6 +400,7 @@ gst_soup_http_src_finalize (GObject * gobject)
   GST_DEBUG_OBJECT (src, "finalize");
 
   g_free (src->location);
+  g_free (src->redirection_uri);
   g_free (src->user_agent);
   if (src->proxy != NULL) {
     soup_uri_free (src->proxy);
@@ -489,6 +493,7 @@ gst_soup_http_src_set_property (GObject * object, guint prop_id,
       break;
     case PROP_TIMEOUT:
       src->timeout = g_value_get_uint (value);
+      GST_DEBUG_OBJECT (src, "timeout=%d", src->timeout);
       break;
     case PROP_KEEP_ALIVE:
       src->keep_alive = g_value_get_boolean (value);
@@ -500,7 +505,7 @@ gst_soup_http_src_set_property (GObject * object, guint prop_id,
         gst_structure_free (src->extra_headers);
 
       src->extra_headers = s ? gst_structure_copy (s) : NULL;
-      
+
       /* Any change in the HTTP headers could imply a different reply from the
        * server so we can't claim we know the size anymore */
       src->have_size = FALSE;
@@ -779,6 +784,7 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
   GstBaseSrc *basesrc;
   guint64 newsize;
   GHashTable *params = NULL;
+  GstStructure *http_headers;
 
   GST_DEBUG_OBJECT (src, "got headers:");
   soup_message_headers_foreach (msg->response_headers,
@@ -786,6 +792,24 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
 
   if (msg->status_code == 407 && src->proxy_id && src->proxy_pw)
     return;
+
+  if (soup_message_headers_header_equals (msg->response_headers,
+          "Accept-Ranges", "none")) {
+    GST_DEBUG_OBJECT (src,
+        "Server doesn't support ranges => Source is not seekable");
+    src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_FALSE;
+  }
+
+  http_headers = gst_structure_new ("http-headers", NULL);
+  gst_structure_set (http_headers, "uri", G_TYPE_STRING, src->location,
+      "http-status-code", G_TYPE_UINT, msg->status_code, NULL);
+  if (src->redirection_uri)
+    gst_structure_set (http_headers, "redirection-uri", G_TYPE_STRING,
+        src->redirection_uri, NULL);
+
+  gst_element_post_message (GST_ELEMENT_CAST (src),
+      gst_message_new_element (GST_OBJECT_CAST (src), http_headers));
+
 
   if (src->automatic_redirect && SOUP_STATUS_IS_REDIRECTION (msg->status_code)) {
     GST_DEBUG_OBJECT (src, "%u redirect to \"%s\"", msg->status_code,
@@ -806,7 +830,8 @@ gst_soup_http_src_got_headers_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
     if (!src->have_size || (src->content_size != newsize)) {
       src->content_size = newsize;
       src->have_size = TRUE;
-      src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
+      if (src->seekable == GST_SOUP_HTTP_SRC_SEEKABLE_UNKNOWN)
+        src->seekable = GST_SOUP_HTTP_SRC_SEEKABLE_TRUE;
       GST_DEBUG_OBJECT (src, "size = %" G_GUINT64_FORMAT, src->content_size);
 
       basesrc = GST_BASE_SRC_CAST (src);
@@ -1172,6 +1197,19 @@ gst_soup_http_src_parse_status (SoupMessage * msg, GstSoupHTTPSrc * src)
   }
 }
 
+static void
+gst_soup_http_src_restarted_cb (SoupMessage * msg, GstSoupHTTPSrc * src)
+{
+  if (soup_session_would_redirect (src->session, msg)) {
+    src->redirection_uri =
+        soup_uri_to_string (soup_message_get_uri (msg), FALSE);
+    src->redirection_permanent =
+        (msg->status_code == SOUP_STATUS_MOVED_PERMANENTLY);
+    GST_DEBUG_OBJECT (src, "%u redirect to \"%s\" (permanent %d)",
+        msg->status_code, src->redirection_uri, src->redirection_permanent);
+  }
+}
+
 static gboolean
 gst_soup_http_src_build_message (GstSoupHTTPSrc * src)
 {
@@ -1198,6 +1236,11 @@ gst_soup_http_src_build_message (GstSoupHTTPSrc * src)
           *cookie);
     }
   }
+  if (src->automatic_redirect) {
+    g_signal_connect (src->msg, "restarted",
+        G_CALLBACK (gst_soup_http_src_restarted_cb), src);
+  }
+
   src->retry = FALSE;
 
   g_signal_connect (src->msg, "got_headers",
@@ -1298,7 +1341,7 @@ gst_soup_http_src_start (GstBaseSrc * bsrc)
 {
   GstSoupHTTPSrc *src = GST_SOUP_HTTP_SRC (bsrc);
 
-  GST_DEBUG_OBJECT (src, "start(\"%s\")", src->location);
+  GST_DEBUG_OBJECT (src, "start(\"%s\") timeout=%i", src->location, src->timeout);
 
   if (!src->location) {
     GST_ELEMENT_ERROR (src, RESOURCE, OPEN_READ, (_("No URL set.")),
@@ -1467,6 +1510,11 @@ gst_soup_http_src_query (GstBaseSrc * bsrc, GstQuery * query)
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_URI:
       gst_query_set_uri (query, src->location);
+      if (src->redirection_uri != NULL) {
+        gst_query_set_uri_redirection (query, src->redirection_uri);
+        gst_query_set_uri_redirection_permanent (query,
+            src->redirection_permanent);
+      }
       ret = TRUE;
       break;
     default:
@@ -1487,6 +1535,12 @@ gst_soup_http_src_set_location (GstSoupHTTPSrc * src, const gchar * uri)
     g_free (src->location);
     src->location = NULL;
   }
+
+  if (src->redirection_uri) {
+    g_free (src->redirection_uri);
+    src->redirection_uri = NULL;
+  }
+
   src->location = g_strdup (uri);
 
   /* Any change in location means we don't know the size anymore. */
