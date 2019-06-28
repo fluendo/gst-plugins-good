@@ -6341,7 +6341,7 @@ qtdemux_parse_samples (GstQTDemux * qtdemux, QtDemuxStream * stream, guint32 n)
         GST_LOG_OBJECT (qtdemux, "Created entry %d with offset "
             "%" G_GUINT64_FORMAT, j, cur->offset);
 
-        if (stream->samples_per_frame * stream->bytes_per_frame) {
+        if (stream->samples_per_frame && stream->bytes_per_frame) {
           cur->size =
               (stream->samples_per_chunk * stream->n_channels) /
               stream->samples_per_frame * stream->bytes_per_frame;
