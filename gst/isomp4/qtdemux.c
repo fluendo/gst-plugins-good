@@ -353,6 +353,7 @@ struct _QtDemuxStream
   guint32 ctts_sample_index;
   guint32 ctts_count;
   gint32 ctts_soffset;
+  gint32 ctts_soffset_error;
 
   /* fragmented */
   gboolean parsed_trex;
@@ -6527,6 +6528,19 @@ ctts:
         stream->ctts_soffset =
             gst_byte_reader_get_int32_be_unchecked (&stream->ctts);
         stream->ctts_sample_index = 0;
+
+        /* If the ctts offset of a keyframe is not 0, we need to normalize 
+         * ctts offsets so that key frames have a 0 ctts offset.
+         * Otherwise, an unintended time shift will be applied. 
+         */
+        if (cur->keyframe) {
+          stream->ctts_soffset_error = stream->ctts_soffset;
+          if (stream->ctts_soffset_error)
+            GST_WARNING_OBJECT (qtdemux, "ctts_offset values will be normalized"
+                " so that offset for keyframes is 0 instead of %d",
+                stream->ctts_soffset_error);
+        }
+        stream->ctts_soffset -= stream->ctts_soffset_error;
       }
 
       ctts_count = stream->ctts_count;
@@ -8047,7 +8061,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
                                  * atom that specifis compression */
 
               gint sample_rate_index =
-                   gst_codec_utils_aac_get_index_from_sample_rate (time_scale);
+                  gst_codec_utils_aac_get_index_from_sample_rate (time_scale);
 
               /* build AAC codec data */
               codec_data[0] = profile << 3;
@@ -8056,13 +8070,13 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
               codec_data[1] |= (channels & 0xF) << 3;
 
               buf = gst_buffer_new_and_alloc (2);
-              memcpy(GST_BUFFER_DATA(buf),codec_data,2);
+              memcpy (GST_BUFFER_DATA (buf), codec_data, 2);
               gst_caps_set_simple (stream->caps,
                   "codec_data", GST_TYPE_BUFFER, buf, NULL);
               gst_buffer_unref (buf);
-             }
-           }
-           break;
+            }
+          }
+          break;
         }
         default:
           break;
