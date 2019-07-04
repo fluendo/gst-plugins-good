@@ -2582,7 +2582,8 @@ qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
   }
   sample = stream->samples + stream->n_samples;
   for (i = 0; i < samples_count; i++) {
-    guint32 dur, size, sflags, ct;
+    guint32 dur, size, sflags;
+    gint32 ct;
 
     /* first read sample data */
     if (flags & TR_SAMPLE_DURATION) {
@@ -2611,11 +2612,9 @@ qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
     } else {
       ct = 0;
     }
-    data += entry_size;
 
     /* fill the sample information */
     sample->offset = *running_offset;
-    sample->pts_offset = ct;
     sample->size = size;
     sample->timestamp = timestamp;
     sample->duration = dur;
@@ -2623,6 +2622,19 @@ qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
     /* ismv seems to use 0x40 for keyframe, 0xc0 for non-keyframe,
      * now idea how it relates to bitfield other than massive LE/BE confusion */
     sample->keyframe = ismv ? ((sflags & 0xff) == 0x40) : !(sflags & 0x10000);
+
+    if (sample->keyframe) {
+      stream->ctts_soffset_error = ct;
+      if (ct)
+        GST_WARNING_OBJECT (qtdemux, "mp4 has wrong ct offset values: "
+            "keyframe at %d with offset %d, normalizing to 0",
+            sample->timestamp, ct);
+
+    }
+    ct -= stream->ctts_soffset_error;
+    sample->pts_offset = ct;
+
+    data += entry_size;
     *running_offset += size;
     timestamp += dur;
     sample++;
@@ -6536,9 +6548,9 @@ ctts:
         if (cur->keyframe) {
           stream->ctts_soffset_error = stream->ctts_soffset;
           if (stream->ctts_soffset_error)
-            GST_WARNING_OBJECT (qtdemux, "ctts_offset values will be normalized"
-                " so that offset for keyframes is 0 instead of %d",
-                stream->ctts_soffset_error);
+            GST_WARNING_OBJECT (qtdemux, "mp4 has wrong ct offset values: "
+                "keyframe at %d with offset %d, normalizing to 0",
+                cur->timestamp, stream->ctts_soffset_error);
         }
         stream->ctts_soffset -= stream->ctts_soffset_error;
       }
