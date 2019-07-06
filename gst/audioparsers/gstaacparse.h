@@ -83,6 +83,7 @@ struct _GstAacParse {
   gboolean       have_pce;
   gint           pce_sample_rate;
   gint           pce_channels;
+  gint           buffers_failed;
 
   GstAacHeaderType header_type;
 };
