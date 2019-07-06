@@ -83,6 +83,8 @@ static const gint loas_channels_table[32] = {
   0, 0, 0, 0, 0, 0, 0, 0
 };
 
+static GstFlowReturn gst_aac_parse_detect (GstBaseParse * parse,
+    GstBuffer * buffer);
 static gboolean gst_aac_parse_start (GstBaseParse * parse);
 static gboolean gst_aac_parse_stop (GstBaseParse * parse);
 
@@ -145,6 +147,7 @@ gst_aac_parse_class_init (GstAacParseClass * klass)
 {
   GstBaseParseClass *parse_class = GST_BASE_PARSE_CLASS (klass);
 
+  parse_class->detect = GST_DEBUG_FUNCPTR (gst_aac_parse_detect);
   parse_class->start = GST_DEBUG_FUNCPTR (gst_aac_parse_start);
   parse_class->stop = GST_DEBUG_FUNCPTR (gst_aac_parse_stop);
   parse_class->set_sink_caps = GST_DEBUG_FUNCPTR (gst_aac_parse_sink_setcaps);
@@ -1203,6 +1206,30 @@ gst_aac_parse_parse_frame (GstBaseParse * parse, GstBaseParseFrame * frame)
   return ret;
 }
 
+
+static GstFlowReturn
+gst_aac_parse_detect (GstBaseParse * parse, GstBuffer * buffer)
+{
+  guint dummy;
+  GstAacParse *aacparse;
+  const guint n_buffers_to_assert = 150;
+
+  aacparse = GST_AAC_PARSE (parse);
+
+  if (gst_aac_parse_detect_stream (aacparse, GST_BUFFER_DATA (buffer),
+          GST_BUFFER_SIZE (buffer), FALSE, &dummy, &dummy)) {
+    aacparse->buffers_failed = 0;
+    return GST_FLOW_OK;
+  }
+
+  if (++aacparse->buffers_failed > n_buffers_to_assert) {
+    GST_WARNING_OBJECT (aacparse, "No valid aac stream detected in %d buffers. "
+        "Returning GST_FLOW_NOT_SUPPORTED.", n_buffers_to_assert);
+    return GST_FLOW_NOT_SUPPORTED;
+  }
+
+  return GST_FLOW_NOT_NEGOTIATED;
+}
 
 /**
  * gst_aac_parse_start:
