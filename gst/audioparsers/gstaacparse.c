@@ -43,7 +43,7 @@
 #endif
 
 #include <string.h>
-
+#include <gst/pbutils/codec-utils.h>
 #include <gst/base/gstbitreader.h>
 #include "gstaacparse.h"
 
@@ -476,8 +476,8 @@ gst_aac_parse_read_loas_audio_specific_config (GstAacParse * aacparse,
       return FALSE;
   }
 
-  GST_INFO_OBJECT (aacparse, "Found LOAS config: %d Hz, %d channels",
-      *sample_rate, *channels);
+  GST_INFO_OBJECT (aacparse, "Found LOAS config: %d Hz, %d channels, sbr = %s",
+      *sample_rate, *channels, sbr ? "TRUE" : "FALSE");
 
   /* There's LOTS of stuff next, but we ignore it for now as we have
      what we want (sample rate and number of channels */
