@@ -37,7 +37,7 @@
 #define AVERROR_INVALIDDATA -1
 #define av_log(_unused, logmeth, ...)  logmeth (__VA_ARGS__)
 #define av_const
-#define av_unused
+#define av_unused G_GNUC_UNUSED
 #define av_always_inline inline
 #define NEG_USR32(a,s) (((uint32_t)(a))>>(32-(s)))
 
