@@ -121,7 +121,7 @@ struct _GstQTDemux
   guint64 seek_offset;
 
   gboolean upstream_seekable;
-  gboolean upstream_size;
+  gint64 upstream_size;
 
   gint64 earliest_presentation_time;
 };
