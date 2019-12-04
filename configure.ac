@@ -145,22 +145,6 @@ dnl check for libm, for sin()
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
-dnl *** check for fluc if DRM is enabled ***
-AC_ARG_WITH([drm], AC_HELP_STRING([--with-drm],
-    [Enable DRM support]), [enable_drm=yes], [enable_drm=no])
-if test "x$enable_drm" = "xyes"; then
-  AG_GST_PKG_CHECK_MODULES(FLUC, flu-codec-sdk)
-  if test "x$HAVE_FLUC" = "xno"; then
-    AC_MSG_ERROR(you do not have the fluc library installed)
-  fi
-  WITH_DRM=1;
-else
-  WITH_DRM=0;
-fi
-AC_DEFINE_UNQUOTED(WITH_DRM, [$WITH_DRM], [Specify that DRM code can be built])
-AC_SUBST(WITH_DRM)
-AM_CONDITIONAL(WITH_DRM, test "x$enable_drm" = "xyes")
-
 dnl *** checks for header files ***
 
 dnl check if we have ANSI C header files
@@ -328,6 +312,26 @@ if test "x$enable_static_plugins" = xyes; then
     [Define if static plugins should be built])
 fi
 AM_CONDITIONAL(GST_PLUGIN_BUILD_STATIC, test "x$enable_static_plugins" = "xyes")
+
+dnl *** check for fluc if DRM is enabled ***
+AC_ARG_WITH([drm], AC_HELP_STRING([--with-drm],
+    [Enable DRM support]), [enable_drm=yes], [enable_drm=no])
+if test "x$enable_drm" = "xyes"; then
+  if test "x$enable_static_plugins" = "xyes"; then
+    PKG_CHECK_MODULES(FLUC, flu-codec-sdk-static)
+  else
+    PKG_CHECK_MODULES(FLUC, flu-codec-sdk)
+  fi
+  if test "x$HAVE_FLUC" = "xno"; then
+    AC_MSG_ERROR(you do not have the fluc library installed)
+  fi
+  WITH_DRM=1;
+else
+  WITH_DRM=0;
+fi
+AC_DEFINE_UNQUOTED(WITH_DRM, [$WITH_DRM], [Specify that DRM code can be built])
+AC_SUBST(WITH_DRM)
+AM_CONDITIONAL(WITH_DRM, test "x$enable_drm" = "xyes")
 
 dnl define an ERROR_CFLAGS Makefile variable
 dnl -Wundef: too many broken headers
