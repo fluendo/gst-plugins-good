@@ -1363,6 +1363,11 @@ gst_qtdemux_adjust_seek (GstQTDemux * qtdemux, gint64 desired_time,
     /* find previous keyframe */
     kindex = gst_qtdemux_find_keyframe (qtdemux, str, index);
 
+    if (!fluc_drm_cenc_context_seek_to_iso_index (str->cenc_context, kindex)) {
+      GST_ELEMENT_ERROR (qtdemux, STREAM, FAILED,
+          (NULL), ("Seeking in cenc samples failed"));
+    }
+
     /* if the keyframe is at a different position, we need to update the
      * requested seek time */
     if (index != kindex) {
