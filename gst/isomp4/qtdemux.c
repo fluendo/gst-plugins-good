@@ -2627,8 +2627,8 @@ qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
       stream->ctts_soffset_error = ct;
       if (ct)
         GST_WARNING_OBJECT (qtdemux, "mp4 has wrong ct offset values: "
-            "keyframe at %d with offset %d, normalizing to 0",
-            sample->timestamp, ct);
+            "keyframe at %" G_GUINT64_FORMAT
+            " with offset %d, normalizing to 0", sample->timestamp, ct);
 
     }
     ct -= stream->ctts_soffset_error;
@@ -6549,8 +6549,9 @@ ctts:
           stream->ctts_soffset_error = stream->ctts_soffset;
           if (stream->ctts_soffset_error)
             GST_WARNING_OBJECT (qtdemux, "mp4 has wrong ct offset values: "
-                "keyframe at %d with offset %d, normalizing to 0",
-                cur->timestamp, stream->ctts_soffset_error);
+                "keyframe at %" G_GUINT64_FORMAT
+                " with offset %d, normalizing to 0", cur->timestamp,
+                stream->ctts_soffset_error);
         }
         stream->ctts_soffset -= stream->ctts_soffset_error;
       }
