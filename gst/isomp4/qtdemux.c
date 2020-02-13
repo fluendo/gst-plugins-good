@@ -7160,6 +7160,11 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     stream->encrypted = TRUE;
     GST_LOG_OBJECT (qtdemux, "track decrypted format %" GST_FOURCC_FORMAT,
         GST_FOURCC_ARGS (stream->fourcc));
+
+#ifdef HAVE_FLUC
+    /* Create the cenc context */
+    stream->cenc_context = fluc_drm_cenc_context_new ();
+#endif
   } else {
     stream->fourcc = fourcc;
   }
@@ -8358,10 +8363,6 @@ qtdemux_parse_stsd (GstQTDemux * qtdemux, GNode * stsd,
       stream->pending_tags = gst_tag_list_copy (trackinfo->pending_tags);
     /* set the description index */
     stream->description_idx = i + 1;
-#ifdef HAVE_FLUC
-    /* Create the cenc context */
-    stream->cenc_context = fluc_drm_cenc_context_new ();
-#endif
 
     if (!qtdemux_parse_stsd_entry (qtdemux, stsd_data, entry_len, fourcc_node,
             fourcc, stream)) {
