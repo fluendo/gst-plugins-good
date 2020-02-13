@@ -2948,11 +2948,11 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
 #ifdef HAVE_FLUC
       GNode *node;
 
+      node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
+
       /* check if the brand has piff, if so, find the uuid */
-      if (qtdemux_is_brand_piff (qtdemux, FALSE)) {
+      if (!node && qtdemux_is_brand_piff (qtdemux, FALSE)) {
         node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_uuid);
-      } else {
-        node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
       }
 
       if (node && !fluc_drm_cenc_parse_senc (stream->cenc_context, node->data)) {
