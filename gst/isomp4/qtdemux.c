@@ -7154,17 +7154,18 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     if (!encx)
       goto corrupt_file;
 
+#ifdef HAVE_FLUC
+    /* Create the cenc context */
+    if (!stream->cenc_context)
+      stream->cenc_context = fluc_drm_cenc_context_new ();
+#endif
+
     if (!qtdemux_parse_encx (qtdemux, stream, encx, &(stream->fourcc)))
       goto corrupt_file;
 
     stream->encrypted = TRUE;
     GST_LOG_OBJECT (qtdemux, "track decrypted format %" GST_FOURCC_FORMAT,
         GST_FOURCC_ARGS (stream->fourcc));
-
-#ifdef HAVE_FLUC
-    /* Create the cenc context */
-    stream->cenc_context = fluc_drm_cenc_context_new ();
-#endif
   } else {
     stream->fourcc = fourcc;
   }
