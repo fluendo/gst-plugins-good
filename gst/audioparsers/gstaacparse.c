@@ -228,7 +228,8 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
           aacparse->codec_data, NULL);
       gst_codec_utils_aac_caps_set_level_and_profile (src_caps,
           GST_BUFFER_DATA (aacparse->codec_data), 2);
-      aacparse->codec_data = NULL;      /* Delegated the ownership */
+      gst_buffer_unref (aacparse->codec_data);
+      aacparse->codec_data = NULL;
     }
   }
 
