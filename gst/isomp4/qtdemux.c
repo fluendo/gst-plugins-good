@@ -2948,11 +2948,11 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
 #ifdef HAVE_FLUC
       GNode *node;
 
+      node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
+
       /* check if the brand has piff, if so, find the uuid */
-      if (qtdemux_is_brand_piff (qtdemux, FALSE)) {
+      if (!node && qtdemux_is_brand_piff (qtdemux, FALSE)) {
         node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_uuid);
-      } else {
-        node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
       }
 
       if (node && !fluc_drm_cenc_parse_senc (stream->cenc_context, node->data)) {
@@ -7154,6 +7154,12 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     if (!encx)
       goto corrupt_file;
 
+#ifdef HAVE_FLUC
+    /* Create the cenc context */
+    if (!stream->cenc_context)
+      stream->cenc_context = fluc_drm_cenc_context_new ();
+#endif
+
     if (!qtdemux_parse_encx (qtdemux, stream, encx, &(stream->fourcc)))
       goto corrupt_file;
 
@@ -8358,10 +8364,6 @@ qtdemux_parse_stsd (GstQTDemux * qtdemux, GNode * stsd,
       stream->pending_tags = gst_tag_list_copy (trackinfo->pending_tags);
     /* set the description index */
     stream->description_idx = i + 1;
-#ifdef HAVE_FLUC
-    /* Create the cenc context */
-    stream->cenc_context = fluc_drm_cenc_context_new ();
-#endif
 
     if (!qtdemux_parse_stsd_entry (qtdemux, stsd_data, entry_len, fourcc_node,
             fourcc, stream)) {
