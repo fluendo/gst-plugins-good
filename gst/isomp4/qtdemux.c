@@ -5154,12 +5154,14 @@ qtdemux_parse_moov (GstQTDemux * qtdemux, const guint8 * buffer, guint length)
   {
     GNode *pssh =
         qtdemux_tree_get_child_by_type (qtdemux->moov_node, FOURCC_pssh);
-    if (pssh) {
+    while (pssh) {
       GstEvent *event = fluc_drm_event_new_pssh (pssh->data, "isobmff/moov");
       if (event)
         gst_qtdemux_push_or_queue_event (qtdemux, event);
       else
         GST_ERROR_OBJECT (qtdemux, "could not create DRM event");
+
+      pssh = qtdemux_tree_get_sibling_by_type (pssh, FOURCC_pssh);
     }
   }
 #endif
