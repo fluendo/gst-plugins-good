@@ -705,6 +705,10 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
       NULL, NULL,
       g_cclosure_marshal_VOID__INT64_BUFFER, G_TYPE_NONE, 2, G_TYPE_INT64,
       GST_TYPE_BUFFER);
+
+#ifdef HAVE_FLUC
+  fluc_drm_init ();
+#endif
 }
 
 static void
