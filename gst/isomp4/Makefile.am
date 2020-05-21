@@ -5,7 +5,7 @@ libgstisomp4_la_CFLAGS = $(ERROR_CFLAGS) $(GST_PLUGINS_BASE_CFLAGS) \
     $(GST_BASE_CFLAGS) $(GST_CFLAGS)
 
 if WITH_DRM
-libgstisomp4_la_CFLAGS += $(FLUC_CFLAGS) -DHAVE_FLUC
+libgstisomp4_la_CFLAGS += $(FLUC_CFLAGS)
 endif
 
 libgstisomp4_la_LIBADD = \
