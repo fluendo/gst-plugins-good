@@ -10750,13 +10750,15 @@ qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
     case 0x20736d:
     case GST_MAKE_FOURCC ('e', 'c', '-', '3'):
       _codec ("EAC-3 audio");
-      caps = gst_caps_new_simple ("audio/x-eac3",
+      caps = gst_caps_new_simple (stream->encrypted ?
+          "audio/x-eac3-encrypted" : "audio/x-eac3",
           "framed", G_TYPE_BOOLEAN, TRUE, NULL);
       stream->sampled = TRUE;
       break;
     case GST_MAKE_FOURCC ('a', 'c', '-', '3'):
       _codec ("AC-3 audio");
-      caps = gst_caps_new_simple ("audio/x-ac3",
+      caps = gst_caps_new_simple (stream->encrypted ?
+          "audio/x-ac3-encrypted" : "audio/x-ac3",
           "framed", G_TYPE_BOOLEAN, TRUE, NULL);
       stream->sampled = TRUE;
       break;
