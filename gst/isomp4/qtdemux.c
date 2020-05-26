@@ -3285,7 +3285,7 @@ gst_qtdemux_loop_state_header (GstQTDemux * qtdemux)
       }
 
       if (length != GST_BUFFER_SIZE (moov)) {
-        GST_ELEMENT_ERROR (qtdemux, STREAM, DEMUX,
+        GST_ELEMENT_ERROR (qtdemux, STREAM, FORMAT,
             (_("This file is incomplete and cannot be played.")),
             ("We got less than expected (received %u, wanted %u, offset %"
                 G_GUINT64_FORMAT ")",
