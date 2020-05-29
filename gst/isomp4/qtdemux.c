@@ -76,8 +76,8 @@
 #include <string.h>
 #include <math.h>
 
-#ifdef HAVE_FLUC
-#include <fluc/fluc.h>
+#if WITH_DRM
+#include <fluc/drm/flucdrm.h>
 #endif
 
 #ifdef HAVE_ZLIB
@@ -364,7 +364,7 @@ struct _QtDemuxStream
 
   /* Content Protection */
   gboolean encrypted;
-#ifdef HAVE_FLUC
+#if WITH_DRM
   FlucDrmCencContext *cenc_context;
 #endif
 };
@@ -706,7 +706,7 @@ gst_qtdemux_class_init (GstQTDemuxClass * klass)
       g_cclosure_marshal_VOID__INT64_BUFFER, G_TYPE_NONE, 2, G_TYPE_INT64,
       GST_TYPE_BUFFER);
 
-#ifdef HAVE_FLUC
+#if WITH_DRM
   fluc_drm_init ();
 #endif
 }
@@ -1367,7 +1367,7 @@ gst_qtdemux_adjust_seek (GstQTDemux * qtdemux, gint64 desired_time,
     /* find previous keyframe */
     kindex = gst_qtdemux_find_keyframe (qtdemux, str, index);
 
-#ifdef HAVE_FLUC
+#if WITH_DRM
     if (str->encrypted && str->cenc_context
         && !fluc_drm_cenc_context_seek_to_iso_index (str->cenc_context,
             kindex)) {
@@ -2115,7 +2115,7 @@ gst_qtdemux_stream_free (GstQTDemux * qtdemux, QtDemuxStream * stream)
   }
 
   /* free cenc context */
-#ifdef HAVE_FLUC
+#if WITH_DRM
   if (stream->cenc_context) {
     fluc_drm_cenc_context_free (stream->cenc_context);
     stream->cenc_context = NULL;
@@ -2949,7 +2949,7 @@ qtdemux_parse_moof (GstQTDemux * qtdemux, const guint8 * buffer, guint length,
 
     /* On encrypted streams use flu-codec-sdk to parse cenc node */
     if (stream->encrypted) {
-#ifdef HAVE_FLUC
+#if WITH_DRM
       GNode *node;
 
       node = qtdemux_tree_get_child_by_type (traf_node, FOURCC_senc);
@@ -4132,7 +4132,7 @@ gst_qtdemux_process_buffer (GstQTDemux * qtdemux, QtDemuxStream * stream,
 static gboolean
 flu_decorate_and_push_buffer (QtDemuxStream * stream, GstBuffer * buf)
 {
-#ifdef HAVE_FLUC
+#if WITH_DRM
   if (G_UNLIKELY (stream->encrypted)) {
     buf = fluc_drm_buffer_new_from_cenc (buf, stream->cenc_context);
     if (!buf)
@@ -5154,7 +5154,7 @@ qtdemux_parse_moov (GstQTDemux * qtdemux, const guint8 * buffer, guint length)
   GST_DEBUG_OBJECT (qtdemux, "parsing 'moov' atom");
   qtdemux_parse_node (qtdemux, qtdemux->moov_node, buffer, length);
 
-#ifdef HAVE_FLUC
+#if WITH_DRM
   {
     GNode *pssh =
         qtdemux_tree_get_child_by_type (qtdemux->moov_node, FOURCC_pssh);
@@ -5830,7 +5830,7 @@ gst_qtdemux_add_stream (GstQTDemux * qtdemux,
     gst_pad_set_caps (stream->pad, stream->caps);
 
     /* Overwrite the caps with x-cenc caps if the stream is encrypted */
-#ifdef HAVE_FLUC
+#if WITH_DRM
     if (stream->encrypted) {
       /* Cenc context will always set this caps to drm buffers also */
       if (!fluc_drm_cenc_context_set_outcaps (stream->cenc_context,
@@ -7018,7 +7018,7 @@ qtdemux_parse_cenc (GstQTDemux * qtdemux, QtDemuxStream * stream,
     GST_WARNING_OBJECT (qtdemux, "No tenc found");
     return FALSE;
   }
-#ifdef HAVE_FLUC
+#if WITH_DRM
   return fluc_drm_cenc_parse_tenc (stream->cenc_context, tenc->data);
 #else
   return TRUE;
@@ -7160,7 +7160,7 @@ qtdemux_parse_stsd_entry (GstQTDemux * qtdemux, const guint8 * stsd_data,
     if (!encx)
       goto corrupt_file;
 
-#ifdef HAVE_FLUC
+#if WITH_DRM
     /* Create the cenc context */
     if (!stream->cenc_context)
       stream->cenc_context = fluc_drm_cenc_context_new ();
@@ -10750,13 +10750,15 @@ qtdemux_audio_caps (GstQTDemux * qtdemux, QtDemuxStream * stream,
     case 0x20736d:
     case GST_MAKE_FOURCC ('e', 'c', '-', '3'):
       _codec ("EAC-3 audio");
-      caps = gst_caps_new_simple ("audio/x-eac3",
+      caps = gst_caps_new_simple (stream->encrypted ?
+          "audio/x-eac3-encrypted" : "audio/x-eac3",
           "framed", G_TYPE_BOOLEAN, TRUE, NULL);
       stream->sampled = TRUE;
       break;
     case GST_MAKE_FOURCC ('a', 'c', '-', '3'):
       _codec ("AC-3 audio");
-      caps = gst_caps_new_simple ("audio/x-ac3",
+      caps = gst_caps_new_simple (stream->encrypted ?
+          "audio/x-ac3-encrypted" : "audio/x-ac3",
           "framed", G_TYPE_BOOLEAN, TRUE, NULL);
       stream->sampled = TRUE;
       break;
