@@ -2225,6 +2225,8 @@ qtdemux_parse_ftyp (GstQTDemux * qtdemux, const guint8 * buffer, gint length)
     qtdemux->major_brand = QT_FOURCC (buffer + 8);
     GST_DEBUG_OBJECT (qtdemux, "major brand: %" GST_FOURCC_FORMAT,
         GST_FOURCC_ARGS (qtdemux->major_brand));
+    if (qtdemux->comp_brands)
+      gst_buffer_unref (qtdemux->comp_brands);
     buf = qtdemux->comp_brands = gst_buffer_new_and_alloc (length - 16);
     memcpy (GST_BUFFER_DATA (buf), buffer + 16, GST_BUFFER_SIZE (buf));
   }
