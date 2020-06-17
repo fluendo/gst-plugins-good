@@ -2170,6 +2170,8 @@ out:
   pa_threaded_mainloop_unlock (mainloop);
 
 done:
+  if (spec.caps)
+    gst_caps_unref (spec.caps);
   gst_object_unref (psink);
   return ret;
 
