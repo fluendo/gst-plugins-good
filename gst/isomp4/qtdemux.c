@@ -1319,6 +1319,15 @@ gst_qtdemux_move_stream (GstQTDemux * qtdemux, QtDemuxStream * str,
    * starting from */
   str->from_sample = index;
   str->discont = TRUE;
+
+#if WITH_DRM
+  if (str->encrypted && str->cenc_context
+      && !fluc_drm_cenc_context_seek_to_iso_index (str->cenc_context, index)) {
+    GST_ELEMENT_ERROR (qtdemux, STREAM, FAILED, (NULL),
+        ("Seeking in cenc samples failed"));
+  }
+#endif
+
 }
 
 static void
