@@ -126,7 +126,7 @@ enum
 
 #define DEFAULT_USER_AGENT           "GStreamer souphttpsrc "
 #define DEFAULT_KEEP_ALIVE           FALSE
-#define DEFAULT_TIMEOUT              30
+#define DEFAULT_TIMEOUT              10
 
 static void gst_soup_http_src_uri_handler_init (gpointer g_iface,
     gpointer iface_data);
