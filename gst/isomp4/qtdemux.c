@@ -2646,7 +2646,7 @@ qtdemux_parse_trun (GstQTDemux * qtdemux, GstByteReader * trun,
      * now idea how it relates to bitfield other than massive LE/BE confusion */
     sample->keyframe = ismv ? ((sflags & 0xff) == 0x40) : !(sflags & 0x10000);
 
-    if (sample->keyframe) {
+    if (0 && sample->keyframe) {
       stream->ctts_soffset_error = ct;
       if (ct)
         GST_WARNING_OBJECT (qtdemux, "mp4 has wrong ct offset values: "
@@ -6570,7 +6570,7 @@ ctts:
          * ctts offsets so that key frames have a 0 ctts offset.
          * Otherwise, an unintended time shift will be applied. 
          */
-        if (cur->keyframe) {
+        if (cur->keyframe && 0) {
           stream->ctts_soffset_error = stream->ctts_soffset;
           if (stream->ctts_soffset_error)
             GST_WARNING_OBJECT (qtdemux, "mp4 has wrong ct offset values: "
