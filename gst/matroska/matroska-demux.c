@@ -5035,7 +5035,9 @@ gst_matroska_demux_video_caps (GstMatroskaTrackVideoContext *
 
       priv = gst_buffer_new_and_alloc (size);
       memcpy (GST_BUFFER_DATA (priv), data, size);
-      gst_caps_set_simple (caps, "codec_data", GST_TYPE_BUFFER, priv, NULL);
+      gst_caps_set_simple (caps, "codec_data", GST_TYPE_BUFFER, priv,
+          "stream-format", G_TYPE_STRING, "hvc1",
+          "alignment", G_TYPE_STRING, "au", NULL);
       gst_buffer_unref (priv);
 
     } else {
