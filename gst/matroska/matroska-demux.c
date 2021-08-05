@@ -117,7 +117,7 @@ static GstStaticPadTemplate subtitle_src_templ =
     GST_STATIC_PAD_TEMPLATE ("subtitle_%02d",
     GST_PAD_SRC,
     GST_PAD_SOMETIMES,
-    GST_STATIC_CAPS ("text/x-pango-markup; application/x-ssa; "
+    GST_STATIC_CAPS ("text/x-subrip-muxed; application/x-ssa; "
         "application/x-ass;application/x-usf; video/x-dvd-subpicture; "
         "subpicture/x-pgs; subtitle/x-kate; " "application/x-subtitle-unknown")
     );
@@ -5553,8 +5553,7 @@ gst_matroska_demux_subtitle_caps (GstMatroskaTrackSubtitleContext *
   /* TODO: Add GST_MATROSKA_CODEC_ID_SUBTITLE_BMP support
    * Check if we have to do something with codec_private */
   if (!strcmp (codec_id, GST_MATROSKA_CODEC_ID_SUBTITLE_UTF8)) {
-    /* well, plain text simply does not have a lot of markup ... */
-    caps = gst_caps_new_simple ("text/x-pango-markup", NULL);
+    caps = gst_caps_new_simple ("text/x-subrip-muxed", NULL);
     context->postprocess_frame = gst_matroska_demux_check_subtitle_buffer;
     subtitlecontext->check_markup = TRUE;
   } else if (!strcmp (codec_id, GST_MATROSKA_CODEC_ID_SUBTITLE_SSA)) {
